@@ -12,7 +12,7 @@ use Signal qw( install_handler retrieve_caught );
 my %actions = (
     $S_LOAD => sub {
         say "Loading";
-        return;
+        return $I_DONE;
     },
     $S_RUN => sub {
         say "Running";
@@ -20,11 +20,11 @@ my %actions = (
     },
     $S_REAP => sub {
         say "Reaping";
-        return;
+        return $I_DONE;
     },
     $S_WATCH => sub {
         say "Watching";
-        return;
+        return $I_DONE;
     },
     $S_SLEEP => sub {
         say "Sleeping";
@@ -32,20 +32,21 @@ my %actions = (
         return;
     },
     $S_REAP_GRACE => sub {
-        say "Reaping during gracefull shutdown";
-        return;
+        say "Reaping during graceful shutdown";
+        return rand() < 0.25 ? $I_DONE : ();
     },
     $S_WATCH_GRACE => sub {
-        say "Watching during gracefull shutdown";
-        return;
+        say "Watching during graceful shutdown";
+        return $I_DONE;
     },
     $S_SLEEP_GRACE => sub {
-        say "Sleeping during gracefull shutdown";
+        say "Sleeping during graceful shutdown";
+        pause;
         return;
     },
     $S_SHUTDOWN => sub {
         say "Shutting down forcefully";
-        return;
+        return $I_DONE;
     },
 );
 

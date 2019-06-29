@@ -45,12 +45,12 @@ $BUILDER->define_input(
     $I_ZERO => (
         $S_LOAD        => $S_RUN,
         $S_RUN         => $S_RUN,
-        $S_REAP        => $S_SLEEP,
         $S_WATCH       => $S_SLEEP,
         $S_SLEEP       => $S_SLEEP,
-        $S_REAP_GRACE  => $S_SLEEP_GRACE,
+        $S_REAP        => $S_SLEEP,
         $S_WATCH_GRACE => $S_SLEEP_GRACE,
         $S_SLEEP_GRACE => $S_SLEEP_GRACE,
+        $S_REAP_GRACE  => $S_SLEEP_GRACE,
         $S_SHUTDOWN    => $S_SHUTDOWN,
         $S_EXIT        => $S_EXIT,
     )
@@ -60,12 +60,12 @@ $BUILDER->define_input(
     $I_DONE => (
         $S_LOAD        => $S_RUN,
         $S_RUN         => $S_SLEEP,
-        $S_REAP        => $S_SLEEP,
         $S_WATCH       => $S_SLEEP,
         $S_SLEEP       => $S_SLEEP,
-        $S_REAP_GRACE  => $S_SLEEP_GRACE,
+        $S_REAP        => $S_SLEEP,
         $S_WATCH_GRACE => $S_SLEEP_GRACE,
         $S_SLEEP_GRACE => $S_EXIT,
+        $S_REAP_GRACE  => $S_EXIT,
         $S_SHUTDOWN    => $S_EXIT,
         $S_EXIT        => $S_EXIT,
     )
@@ -75,12 +75,12 @@ $BUILDER->define_input(
     $I_CHLD => (
         $S_LOAD        => $S_REAP,
         $S_RUN         => $S_REAP,
-        $S_REAP        => $S_REAP,
         $S_WATCH       => $S_REAP,
         $S_SLEEP       => $S_REAP,
-        $S_REAP_GRACE  => $S_REAP_GRACE,
+        $S_REAP        => $S_REAP,
         $S_WATCH_GRACE => $S_REAP_GRACE,
         $S_SLEEP_GRACE => $S_REAP_GRACE,
+        $S_REAP_GRACE  => $S_REAP_GRACE,
         $S_SHUTDOWN    => $S_SHUTDOWN,
         $S_EXIT        => $S_EXIT,
     )
@@ -90,12 +90,12 @@ $BUILDER->define_input(
     $I_ALRM => (
         $S_LOAD        => $S_WATCH,
         $S_RUN         => $S_WATCH,
-        $S_REAP        => $S_WATCH,
         $S_WATCH       => $S_WATCH,
         $S_SLEEP       => $S_WATCH,
-        $S_REAP_GRACE  => $S_WATCH_GRACE,
+        $S_REAP        => $S_WATCH,
         $S_WATCH_GRACE => $S_WATCH_GRACE,
         $S_SLEEP_GRACE => $S_WATCH_GRACE,
+        $S_REAP_GRACE  => $S_WATCH_GRACE,
         $S_SHUTDOWN    => $S_SHUTDOWN,
         $S_EXIT        => $S_EXIT,
     )
@@ -105,12 +105,12 @@ $BUILDER->define_input(
     $I_USR1 => (
         $S_LOAD        => $S_RUN,
         $S_RUN         => $S_RUN,
-        $S_REAP        => $S_RUN,
         $S_WATCH       => $S_RUN,
         $S_SLEEP       => $S_RUN,
-        $S_REAP_GRACE  => $S_SLEEP_GRACE,
+        $S_REAP        => $S_RUN,
         $S_WATCH_GRACE => $S_SLEEP_GRACE,
         $S_SLEEP_GRACE => $S_SLEEP_GRACE,
+        $S_REAP_GRACE  => $S_SLEEP_GRACE,
         $S_SHUTDOWN    => $S_SHUTDOWN,
         $S_EXIT        => $S_EXIT,
     )
@@ -120,12 +120,12 @@ $BUILDER->define_input(
     $I_HUP => (
         $S_LOAD        => $S_LOAD,
         $S_RUN         => $S_LOAD,
-        $S_REAP        => $S_LOAD,
         $S_WATCH       => $S_LOAD,
         $S_SLEEP       => $S_LOAD,
-        $S_REAP_GRACE  => $S_SLEEP_GRACE,
+        $S_REAP        => $S_LOAD,
         $S_WATCH_GRACE => $S_SLEEP_GRACE,
         $S_SLEEP_GRACE => $S_SLEEP_GRACE,
+        $S_REAP_GRACE  => $S_SLEEP_GRACE,
         $S_SHUTDOWN    => $S_SHUTDOWN,
         $S_EXIT        => $S_EXIT,
     )
@@ -135,12 +135,12 @@ $BUILDER->define_input(
     $I_TERM => (
         $S_LOAD        => $S_SLEEP_GRACE,
         $S_RUN         => $S_SLEEP_GRACE,
-        $S_REAP        => $S_SLEEP_GRACE,
         $S_WATCH       => $S_SLEEP_GRACE,
         $S_SLEEP       => $S_SLEEP_GRACE,
-        $S_REAP_GRACE  => $S_SHUTDOWN,
+        $S_REAP        => $S_SLEEP_GRACE,
         $S_WATCH_GRACE => $S_SHUTDOWN,
         $S_SLEEP_GRACE => $S_SHUTDOWN,
+        $S_REAP_GRACE  => $S_SHUTDOWN,
         $S_SHUTDOWN    => $S_EXIT,
         $S_EXIT        => $S_EXIT,
     )
@@ -150,12 +150,12 @@ $BUILDER->define_input(
     $I_EXIT => (
         $S_LOAD        => $S_SHUTDOWN,
         $S_RUN,        => $S_SHUTDOWN,
-        $S_REAP,       => $S_SHUTDOWN,
         $S_WATCH       => $S_SHUTDOWN,
         $S_SLEEP,      => $S_SHUTDOWN,
-        $S_REAP_GRACE  => $S_SHUTDOWN,
+        $S_REAP,       => $S_SHUTDOWN,
         $S_WATCH_GRACE => $S_SHUTDOWN,
         $S_SLEEP_GRACE => $S_SHUTDOWN,
+        $S_REAP_GRACE  => $S_SHUTDOWN,
         $S_SHUTDOWN    => $S_EXIT,
         $S_EXIT        => $S_EXIT,
     )
