@@ -1,10 +1,12 @@
 package ServerFSM;
 use strict;
 use warnings;
+use feature 'say';
 
 use Exporter qw( import );
 use FSM::Builder;
 use Readonly;
+use POSIX qw( pause );
 
 our @EXPORT_OK = qw( new_server_fsm cmp_inputs %INPUT_PRIORITIES $S_LOAD $S_RUN $S_REAP $S_WATCH $S_SLEEP $S_REAP_GRACE $S_WATCH_GRACE $S_SLEEP_GRACE $S_SHUTDOWN $S_EXIT $I_ZERO $I_DONE $I_CHLD $I_USR1 $I_ALRM $I_HUP $I_TERM $I_EXIT );
 
@@ -168,6 +170,76 @@ sub new_server_fsm {
 sub cmp_inputs {
     my ( $a, $b ) = @_;
     $INPUT_PRIORITIES{ $a } <=> $INPUT_PRIORITIES{ $b }
+}
+
+sub new {
+    my ($class, %params) = @_;
+    my $config = delete $params{config};
+
+    my $self = bless {}, $class;
+
+    $self->{fsm} = new_server_fsm();
+    $self->{config} = $config;
+
+    return $self;
+}
+
+sub do_load {
+    my $self = shift;
+
+    if ( $self->{config}->load() ) {
+        say "Successfully loaded config";
+        return $I_DONE;
+    }
+    else {
+        say "Failed to load config";
+        return ( $self->{config}->is_loaded() ) ? () : $I_EXIT;
+    }
+}
+
+my %actions = (
+    $S_LOAD => \&do_load,
+    $S_RUN => sub {
+        say "Running";
+        return rand() < 0.25 ? $I_DONE : ();
+    },
+    $S_REAP => sub {
+        say "Reaping";
+        return $I_DONE;
+    },
+    $S_WATCH => sub {
+        say "Watching";
+        return $I_DONE;
+    },
+    $S_SLEEP => sub {
+        say "Sleeping";
+        pause;
+        return;
+    },
+    $S_REAP_GRACE => sub {
+        say "Reaping during graceful shutdown";
+        return rand() < 0.25 ? $I_DONE : ();
+    },
+    $S_WATCH_GRACE => sub {
+        say "Watching during graceful shutdown";
+        return $I_DONE;
+    },
+    $S_SLEEP_GRACE => sub {
+        say "Sleeping during graceful shutdown";
+        pause;
+        return;
+    },
+    $S_SHUTDOWN => sub {
+        say "Shutting down forcefully";
+        return $I_DONE;
+    },
+);
+
+sub act {
+    my $self  = shift;
+    my $state = shift;
+
+    return $actions{$state}->( $self );
 }
 
 1;
