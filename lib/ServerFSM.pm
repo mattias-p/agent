@@ -174,14 +174,16 @@ sub cmp_inputs {
 
 sub new {
     my ( $class, %params ) = @_;
-    my $config    = delete $params{config};
-    my $allocator = delete $params{allocator};
+    my $config     = delete $params{config};
+    my $allocator  = delete $params{allocator};
+    my $dispatcher = delete $params{dispatcher};
 
     my $self = bless {}, $class;
 
-    $self->{fsm}       = new_server_fsm();
-    $self->{config}    = $config;
-    $self->{allocator} = $allocator;
+    $self->{fsm}        = new_server_fsm();
+    $self->{config}     = $config;
+    $self->{allocator}  = $allocator;
+    $self->{dispatcher} = $dispatcher;
 
     return $self;
 }
@@ -208,19 +210,37 @@ sub do_run {
         return $I_DONE;
     }
 
-    say "Claimed a job";
+    say "Claimed job $id";
+
+    my $pid = $self->{dispatcher}->dispatch( $id );
+    if ( $pid ) {
+        say "Dispatched job $id to process $pid";
+    }
+    else {
+        say "Failed to dispatch job $id";
+        $self->{allocator}->release( $id );
+    }
 
     return ();
+}
+
+sub do_reap {
+    my $self = shift;
+    say "Reaping";
+    my %jobs = $self->{dispatcher}->reap();
+    for my $pid ( keys %jobs ) {
+        my ( $jid, $status ) = @{ $jobs{$pid} };
+        say "Releasing job $jid (pid $pid, status $status)";
+        $self->{allocator}->release( $jid );
+    }
+    return $I_DONE;
 }
 
 
 my %actions = (
     $S_LOAD => \&do_load,
     $S_RUN => \&do_run,
-    $S_REAP => sub {
-        say "Reaping";
-        return $I_DONE;
-    },
+    $S_REAP => \&do_reap,
     $S_WATCH => sub {
         say "Watching";
         return $I_DONE;
@@ -230,10 +250,7 @@ my %actions = (
         pause;
         return;
     },
-    $S_REAP_GRACE => sub {
-        say "Reaping during graceful shutdown";
-        return rand() < 0.25 ? $I_DONE : ();
-    },
+    $S_REAP_GRACE => \&do_reap,
     $S_WATCH_GRACE => sub {
         say "Watching during graceful shutdown";
         return $I_DONE;

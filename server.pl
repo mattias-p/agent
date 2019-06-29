@@ -5,6 +5,7 @@ use feature 'say';
 
 use Config;
 use Allocator;
+use Dispatcher;
 use Readonly;
 use Heap::Binary;
 use POSIX qw( pause );
@@ -20,9 +21,10 @@ install_handler( 'USR1' );
 
 my $event_stream = Heap::Binary->new( \&cmp_inputs );
 my $fsm          = new_server_fsm();
-my $agent        = ServerFSM->new(
-    config    => Config->new(),
-    allocator => Allocator->new(),
+my $agent = ServerFSM->new(
+    config     => Config->new(),
+    allocator  => Allocator->new(),
+    dispatcher => Dispatcher->new(),
 );
 while ( $fsm->current ne $S_EXIT ) {
     my @events = $agent->act( $fsm->current );
