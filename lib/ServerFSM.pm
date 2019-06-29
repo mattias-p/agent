@@ -173,13 +173,15 @@ sub cmp_inputs {
 }
 
 sub new {
-    my ($class, %params) = @_;
-    my $config = delete $params{config};
+    my ( $class, %params ) = @_;
+    my $config    = delete $params{config};
+    my $allocator = delete $params{allocator};
 
     my $self = bless {}, $class;
 
-    $self->{fsm} = new_server_fsm();
-    $self->{config} = $config;
+    $self->{fsm}       = new_server_fsm();
+    $self->{config}    = $config;
+    $self->{allocator} = $allocator;
 
     return $self;
 }
@@ -197,12 +199,24 @@ sub do_load {
     }
 }
 
+sub do_run {
+    my $self = shift;
+
+    my $id = $self->{allocator}->claim();
+    if ( !defined $id ) {
+        say "No jobs available";
+        return $I_DONE;
+    }
+
+    say "Claimed a job";
+
+    return ();
+}
+
+
 my %actions = (
     $S_LOAD => \&do_load,
-    $S_RUN => sub {
-        say "Running";
-        return rand() < 0.25 ? $I_DONE : ();
-    },
+    $S_RUN => \&do_run,
     $S_REAP => sub {
         say "Reaping";
         return $I_DONE;
