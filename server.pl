@@ -9,7 +9,7 @@ use Dispatcher;
 use Readonly;
 use Heap::Binary;
 use POSIX qw( pause );
-use ServerFSM qw( new_server_fsm cmp_inputs $S_LOAD $S_RUN $S_REAP $S_WATCH $S_SLEEP $S_REAP_GRACE $S_WATCH_GRACE $S_SLEEP_GRACE $S_SHUTDOWN $S_EXIT $I_ZERO $I_DONE $I_CHLD $I_ALRM $I_USR1 $I_HUP $I_TERM $I_EXIT );
+use ServerFSM qw( new_server_fsm cmp_inputs $S_EXIT $I_ZERO $I_CHLD $I_ALRM $I_USR1 $I_HUP $I_TERM );
 use Signal qw( install_handler retrieve_caught );
 
 say "$$";

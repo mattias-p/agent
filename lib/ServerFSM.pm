@@ -8,14 +8,14 @@ use FSM::Builder;
 use Readonly;
 use POSIX qw( pause );
 
-our @EXPORT_OK = qw( new_server_fsm cmp_inputs %INPUT_PRIORITIES $S_LOAD $S_RUN $S_REAP $S_WATCH $S_SLEEP $S_REAP_GRACE $S_WATCH_GRACE $S_SLEEP_GRACE $S_SHUTDOWN $S_EXIT $I_ZERO $I_DONE $I_CHLD $I_USR1 $I_ALRM $I_HUP $I_TERM $I_EXIT );
+our @EXPORT_OK = qw( new_server_fsm cmp_inputs %INPUT_PRIORITIES $S_LOAD $S_RUN $S_REAP $S_WATCH $S_IDLE $S_REAP_GRACE $S_WATCH_GRACE $S_IDLE_GRACE $S_SHUTDOWN $S_EXIT $I_ZERO $I_DONE $I_CHLD $I_USR1 $I_ALRM $I_HUP $I_TERM $I_EXIT );
 
 Readonly our $S_LOAD        => 'LOAD';
 Readonly our $S_RUN         => 'RUN';
-Readonly our $S_SLEEP       => 'SLEEP';
+Readonly our $S_IDLE        => 'IDLE';
 Readonly our $S_REAP        => 'REAP';
 Readonly our $S_WATCH       => 'WATCH';
-Readonly our $S_SLEEP_GRACE => 'SLEEP_GRACE';
+Readonly our $S_IDLE_GRACE  => 'IDLE_GRACE';
 Readonly our $S_REAP_GRACE  => 'REAP_GRACE';
 Readonly our $S_WATCH_GRACE => 'WATCH_GRACE';
 Readonly our $S_SHUTDOWN    => 'SHUTDOWN';
@@ -47,12 +47,12 @@ $BUILDER->define_input(
     $I_ZERO => (
         $S_LOAD        => $S_RUN,
         $S_RUN         => $S_RUN,
-        $S_WATCH       => $S_SLEEP,
-        $S_SLEEP       => $S_SLEEP,
-        $S_REAP        => $S_SLEEP,
-        $S_WATCH_GRACE => $S_SLEEP_GRACE,
-        $S_SLEEP_GRACE => $S_SLEEP_GRACE,
-        $S_REAP_GRACE  => $S_SLEEP_GRACE,
+        $S_WATCH       => $S_IDLE,
+        $S_IDLE        => $S_IDLE,
+        $S_REAP        => $S_IDLE,
+        $S_WATCH_GRACE => $S_IDLE_GRACE,
+        $S_IDLE_GRACE  => $S_IDLE_GRACE,
+        $S_REAP_GRACE  => $S_IDLE_GRACE,
         $S_SHUTDOWN    => $S_SHUTDOWN,
         $S_EXIT        => $S_EXIT,
     )
@@ -61,12 +61,12 @@ $BUILDER->define_input(
 $BUILDER->define_input(
     $I_DONE => (
         $S_LOAD        => $S_RUN,
-        $S_RUN         => $S_SLEEP,
-        $S_WATCH       => $S_SLEEP,
-        $S_SLEEP       => $S_SLEEP,
-        $S_REAP        => $S_SLEEP,
-        $S_WATCH_GRACE => $S_SLEEP_GRACE,
-        $S_SLEEP_GRACE => $S_EXIT,
+        $S_RUN         => $S_IDLE,
+        $S_WATCH       => $S_IDLE,
+        $S_IDLE        => $S_IDLE,
+        $S_REAP        => $S_IDLE,
+        $S_WATCH_GRACE => $S_IDLE_GRACE,
+        $S_IDLE_GRACE  => $S_EXIT,
         $S_REAP_GRACE  => $S_EXIT,
         $S_SHUTDOWN    => $S_EXIT,
         $S_EXIT        => $S_EXIT,
@@ -78,10 +78,10 @@ $BUILDER->define_input(
         $S_LOAD        => $S_REAP,
         $S_RUN         => $S_REAP,
         $S_WATCH       => $S_REAP,
-        $S_SLEEP       => $S_REAP,
+        $S_IDLE        => $S_REAP,
         $S_REAP        => $S_REAP,
         $S_WATCH_GRACE => $S_REAP_GRACE,
-        $S_SLEEP_GRACE => $S_REAP_GRACE,
+        $S_IDLE_GRACE  => $S_REAP_GRACE,
         $S_REAP_GRACE  => $S_REAP_GRACE,
         $S_SHUTDOWN    => $S_SHUTDOWN,
         $S_EXIT        => $S_EXIT,
@@ -93,10 +93,10 @@ $BUILDER->define_input(
         $S_LOAD        => $S_WATCH,
         $S_RUN         => $S_WATCH,
         $S_WATCH       => $S_WATCH,
-        $S_SLEEP       => $S_WATCH,
+        $S_IDLE        => $S_WATCH,
         $S_REAP        => $S_WATCH,
         $S_WATCH_GRACE => $S_WATCH_GRACE,
-        $S_SLEEP_GRACE => $S_WATCH_GRACE,
+        $S_IDLE_GRACE  => $S_WATCH_GRACE,
         $S_REAP_GRACE  => $S_WATCH_GRACE,
         $S_SHUTDOWN    => $S_SHUTDOWN,
         $S_EXIT        => $S_EXIT,
@@ -108,11 +108,11 @@ $BUILDER->define_input(
         $S_LOAD        => $S_RUN,
         $S_RUN         => $S_RUN,
         $S_WATCH       => $S_RUN,
-        $S_SLEEP       => $S_RUN,
+        $S_IDLE        => $S_RUN,
         $S_REAP        => $S_RUN,
-        $S_WATCH_GRACE => $S_SLEEP_GRACE,
-        $S_SLEEP_GRACE => $S_SLEEP_GRACE,
-        $S_REAP_GRACE  => $S_SLEEP_GRACE,
+        $S_WATCH_GRACE => $S_IDLE_GRACE,
+        $S_IDLE_GRACE  => $S_IDLE_GRACE,
+        $S_REAP_GRACE  => $S_IDLE_GRACE,
         $S_SHUTDOWN    => $S_SHUTDOWN,
         $S_EXIT        => $S_EXIT,
     )
@@ -123,11 +123,11 @@ $BUILDER->define_input(
         $S_LOAD        => $S_LOAD,
         $S_RUN         => $S_LOAD,
         $S_WATCH       => $S_LOAD,
-        $S_SLEEP       => $S_LOAD,
+        $S_IDLE        => $S_LOAD,
         $S_REAP        => $S_LOAD,
-        $S_WATCH_GRACE => $S_SLEEP_GRACE,
-        $S_SLEEP_GRACE => $S_SLEEP_GRACE,
-        $S_REAP_GRACE  => $S_SLEEP_GRACE,
+        $S_WATCH_GRACE => $S_IDLE_GRACE,
+        $S_IDLE_GRACE  => $S_IDLE_GRACE,
+        $S_REAP_GRACE  => $S_IDLE_GRACE,
         $S_SHUTDOWN    => $S_SHUTDOWN,
         $S_EXIT        => $S_EXIT,
     )
@@ -135,13 +135,13 @@ $BUILDER->define_input(
 
 $BUILDER->define_input(
     $I_TERM => (
-        $S_LOAD        => $S_SLEEP_GRACE,
-        $S_RUN         => $S_SLEEP_GRACE,
-        $S_WATCH       => $S_SLEEP_GRACE,
-        $S_SLEEP       => $S_SLEEP_GRACE,
-        $S_REAP        => $S_SLEEP_GRACE,
+        $S_LOAD        => $S_IDLE_GRACE,
+        $S_RUN         => $S_IDLE_GRACE,
+        $S_WATCH       => $S_IDLE_GRACE,
+        $S_IDLE        => $S_IDLE_GRACE,
+        $S_REAP        => $S_IDLE_GRACE,
         $S_WATCH_GRACE => $S_SHUTDOWN,
-        $S_SLEEP_GRACE => $S_SHUTDOWN,
+        $S_IDLE_GRACE  => $S_SHUTDOWN,
         $S_REAP_GRACE  => $S_SHUTDOWN,
         $S_SHUTDOWN    => $S_EXIT,
         $S_EXIT        => $S_EXIT,
@@ -153,10 +153,10 @@ $BUILDER->define_input(
         $S_LOAD        => $S_SHUTDOWN,
         $S_RUN,        => $S_SHUTDOWN,
         $S_WATCH       => $S_SHUTDOWN,
-        $S_SLEEP,      => $S_SHUTDOWN,
+        $S_IDLE,       => $S_SHUTDOWN,
         $S_REAP,       => $S_SHUTDOWN,
         $S_WATCH_GRACE => $S_SHUTDOWN,
-        $S_SLEEP_GRACE => $S_SHUTDOWN,
+        $S_IDLE_GRACE  => $S_SHUTDOWN,
         $S_REAP_GRACE  => $S_SHUTDOWN,
         $S_SHUTDOWN    => $S_EXIT,
         $S_EXIT        => $S_EXIT,
@@ -236,6 +236,13 @@ sub do_reap {
     return $I_DONE;
 }
 
+sub do_idle {
+    my $self = shift;
+    say "Sleeping";
+    pause;
+    return;
+}
+
 
 my %actions = (
     $S_LOAD => \&do_load,
@@ -245,21 +252,13 @@ my %actions = (
         say "Watching";
         return $I_DONE;
     },
-    $S_SLEEP => sub {
-        say "Sleeping";
-        pause;
-        return;
-    },
+    $S_IDLE => \&do_idle,
     $S_REAP_GRACE => \&do_reap,
     $S_WATCH_GRACE => sub {
         say "Watching during graceful shutdown";
         return $I_DONE;
     },
-    $S_SLEEP_GRACE => sub {
-        say "Sleeping during graceful shutdown";
-        pause;
-        return;
-    },
+    $S_IDLE_GRACE => \&do_idle,
     $S_SHUTDOWN => sub {
         say "Shutting down forcefully";
         return $I_DONE;
