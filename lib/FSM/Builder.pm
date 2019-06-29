@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use Carp qw( confess );
+use FSM;
 use FSM::Util qw( is_name is_state_mapping );
 use List::Util qw( all );
 use Storable qw( dclone );
