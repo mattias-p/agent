@@ -35,9 +35,13 @@ sub extract_min {
     my $value = $self->{items}[1];
 
     my $i = $self->_sink(1);
+
     if ( $i < $#{$self->{items}} ) {
         $self->{items}[$i] = pop @{$self->{items}};
         $self->_sift($i);
+    }
+    elsif ( $i == $#{$self->{items}} ) {
+        pop @{$self->{items}};
     }
 
     return $value;
