@@ -3,17 +3,28 @@ use strict;
 use warnings;
 use feature 'say';
 
+use Config;
 use Readonly;
 use Heap::Binary;
 use POSIX qw( pause );
 use ServerFSM qw( new_server_fsm cmp_inputs $S_LOAD $S_RUN $S_REAP $S_WATCH $S_SLEEP $S_REAP_GRACE $S_WATCH_GRACE $S_SLEEP_GRACE $S_SHUTDOWN $S_EXIT $I_ZERO $I_DONE $I_CHLD $I_ALRM $I_USR1 $I_HUP $I_TERM $I_EXIT );
 use Signal qw( install_handler retrieve_caught );
 
-my %actions = (
-    $S_LOAD => sub {
-        say "Loading";
+my $config = Config->new();
+
+sub do_load_config {
+    if ( $config->load() ) {
+        say "Successfully loaded config";
         return $I_DONE;
-    },
+    }
+    else {
+        say "Failed to load config";
+        return ( $config->is_loaded() ) ? () : $I_EXIT;
+    }
+}
+
+my %actions = (
+    $S_LOAD => \&do_load_config,
     $S_RUN => sub {
         say "Running";
         return rand() < 0.25 ? $I_DONE : ();
