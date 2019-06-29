@@ -87,6 +87,21 @@ $BUILDER->define_input(
 );
 
 $BUILDER->define_input(
+    $I_ALRM => (
+        $S_LOAD        => $S_WATCH,
+        $S_RUN         => $S_WATCH,
+        $S_REAP        => $S_WATCH,
+        $S_WATCH       => $S_WATCH,
+        $S_SLEEP       => $S_WATCH,
+        $S_REAP_GRACE  => $S_WATCH_GRACE,
+        $S_WATCH_GRACE => $S_WATCH_GRACE,
+        $S_SLEEP_GRACE => $S_WATCH_GRACE,
+        $S_SHUTDOWN    => $S_SHUTDOWN,
+        $S_EXIT        => $S_EXIT,
+    )
+);
+
+$BUILDER->define_input(
     $I_USR1 => (
         $S_LOAD        => $S_RUN,
         $S_RUN         => $S_RUN,
@@ -96,7 +111,7 @@ $BUILDER->define_input(
         $S_REAP_GRACE  => $S_SLEEP_GRACE,
         $S_WATCH_GRACE => $S_SLEEP_GRACE,
         $S_SLEEP_GRACE => $S_SLEEP_GRACE,
-        $S_SHUTDOWN    => $S_EXIT,
+        $S_SHUTDOWN    => $S_SHUTDOWN,
         $S_EXIT        => $S_EXIT,
     )
 );
@@ -111,7 +126,7 @@ $BUILDER->define_input(
         $S_REAP_GRACE  => $S_SLEEP_GRACE,
         $S_WATCH_GRACE => $S_SLEEP_GRACE,
         $S_SLEEP_GRACE => $S_SLEEP_GRACE,
-        $S_SHUTDOWN    => $S_EXIT,
+        $S_SHUTDOWN    => $S_SHUTDOWN,
         $S_EXIT        => $S_EXIT,
     )
 );
