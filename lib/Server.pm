@@ -6,7 +6,6 @@ use feature 'say';
 use Exporter qw( import );
 use FSM::Builder;
 use Readonly;
-use POSIX qw( pause );
 
 our @EXPORT_OK = qw( cmp_inputs $S_LOAD $S_RUN $S_REAP $S_TIMEOUT $S_IDLE $S_GRACE_REAP $S_GRACE_TIMEOUT $S_GRACE_IDLE $S_SHUTDOWN $S_EXIT $I_IDLE $I_DONE $I_REAP $I_WORK $I_TIMEOUT $I_LOAD $I_TERM $I_EXIT );
 
@@ -189,6 +188,7 @@ sub new {
     my $allocator  = delete $args{allocator};
     my $dispatcher = delete $args{dispatcher};
     my $alarm      = delete $args{alarm};
+    my $idle       = delete $args{idle};
 
     my $self = bless {}, $class;
 
@@ -209,6 +209,7 @@ sub new {
     $self->{allocator}  = $allocator;
     $self->{dispatcher} = $dispatcher;
     $self->{alarm}      = $alarm;
+    $self->{idle}       = $idle;
 
     return $self;
 }
@@ -276,7 +277,7 @@ sub do_reap {
 
 sub do_idle {
     my $self = shift;
-    pause;
+    $self->{idle}->idle();
     return;
 }
 

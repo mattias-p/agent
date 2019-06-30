@@ -8,6 +8,7 @@ use Allocator;
 use Config;
 use Dispatcher;
 use Heap::Binary;
+use Idle;
 use Readonly;
 use Server qw( cmp_inputs $I_IDLE $I_REAP $I_TIMEOUT $I_WORK $I_LOAD $I_TERM );
 use Signal qw( install_handler retrieve_caught );
@@ -24,6 +25,7 @@ my $server = Server->new(
     allocator  => Allocator->new(),
     dispatcher => Dispatcher->new(),
     alarm      => Alarm->new(),
+    idle       => Idle->new(),
 );
 
 my $events = Heap::Binary->new( \&cmp_inputs );
