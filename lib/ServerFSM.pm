@@ -270,6 +270,19 @@ sub do_idle_grace {
     }
 }
 
+sub do_shutdown {
+    my $self = shift;
+    my %jobs = $self->{dispatcher}->shutdown();
+
+    for my $pid ( keys %jobs ) {
+        my ( $jid, $status ) = @{ $jobs{$pid} };
+        say "Reaped pid $pid (status $status)";
+        say "Releasing job $jid";
+        $self->{allocator}->release( $jid );
+    }
+    return $I_DONE;
+}
+
 
 my %actions = (
     $S_LOAD        => \&do_load,
@@ -280,10 +293,7 @@ my %actions = (
     $S_REAP_GRACE  => \&do_reap,
     $S_WATCH_GRACE => \&do_alarm,
     $S_IDLE_GRACE  => \&do_idle_grace,
-    $S_SHUTDOWN    => sub {
-        say "Shutting down forcefully";
-        return $I_DONE;
-    },
+    $S_SHUTDOWN    => \&do_shutdown,
 );
 
 sub act {

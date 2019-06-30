@@ -45,13 +45,14 @@ sub dispatch {
     }
 }
 
-sub reap {
-    my $self = shift;
+sub _reap {
+    my $self  = shift;
+    my $flags = shift;
 
     my %reaped;
 
     for my $pid ( keys %{ $self->{jobs} } ) {
-        my $status = waitpid( $pid, WNOHANG );
+        my $status = waitpid( $pid, $flags );
         if ( $status != 0 ) {
             my $jid = delete $self->{jobs}{$pid};
             $reaped{$pid} = [ $jid, ${^CHILD_ERROR_NATIVE} ];
@@ -59,6 +60,11 @@ sub reap {
     }
 
     return %reaped;
+}
+
+sub reap {
+    my $self = shift;
+    return $self->_reap( WNOHANG );
 }
 
 sub kill {
@@ -74,6 +80,16 @@ sub kill {
     else {
         return;
     }
+}
+
+sub shutdown {
+    my $self = shift;
+
+    for my $pid ( keys %{ $self->{jobs} } ) {
+        CORE::kill 'KILL', $pid;
+    }
+
+    return $self->_reap( 0 );
 }
 
 1;
