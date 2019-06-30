@@ -45,5 +45,10 @@ to be killed prematurely.
 
 In the shutdown states the agent doesn't react to SIGHUP and SIGUSR1 anymore.
 
+In graceful shutdown the agent waits for active workers to terminate before it
+terminates itself.
+
+In hard shutdown the agent kills all active workers and releases their
+associated job ids before it terminates itself.
 
 [Clean Architecture]: https://www.goodreads.com/book/show/18043011-clean-architecture
