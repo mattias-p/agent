@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use feature 'say';
 
+use Carp qw( confess );
 use Exporter qw( import );
 use FSM::Builder;
 use Readonly;
@@ -179,9 +180,11 @@ $BUILDER->define_input(
 
 sub cmp_inputs {
     my ( $a, $b ) = @_;
-    my $pa = $INPUT_PRIORITIES{$a};
-    my $pb = $INPUT_PRIORITIES{$b};
-    ( $pa // 1000 ) <=> ( $pb // 1000 )
+
+    ( exists $INPUT_PRIORITIES{$a} && exists $INPUT_PRIORITIES{$b} )
+      or confess 'unrecognized inputs';
+
+    return $INPUT_PRIORITIES{$a} <=> $INPUT_PRIORITIES{$b};
 }
 
 sub new {
