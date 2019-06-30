@@ -1,4 +1,4 @@
-package ServerFSM;
+package Server;
 use strict;
 use warnings;
 use feature 'say';

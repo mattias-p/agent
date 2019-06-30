@@ -8,9 +8,8 @@ use Allocator;
 use Config;
 use Dispatcher;
 use Heap::Binary;
-use POSIX qw( pause );
 use Readonly;
-use ServerFSM qw( cmp_inputs $S_EXIT $I_ZERO $I_CHLD $I_ALRM $I_USR1 $I_HUP $I_TERM );
+use Server qw( cmp_inputs $I_ZERO $I_CHLD $I_ALRM $I_USR1 $I_HUP $I_TERM );
 use Signal qw( install_handler retrieve_caught );
 
 say "$$";
@@ -20,7 +19,7 @@ install_handler( 'HUP' );
 install_handler( 'TERM' );
 install_handler( 'USR1' );
 
-my $agent = ServerFSM->new(
+my $server = Server->new(
     config     => Config->new(),
     allocator  => Allocator->new(),
     dispatcher => Dispatcher->new(),
@@ -30,8 +29,8 @@ my $agent = ServerFSM->new(
 my $events = Heap::Binary->new( \&cmp_inputs );
 $events->insert($I_HUP);
 
-while ( $agent->is_alive ) {
-    my @events = $agent->process( $events->extract_min() // $I_ZERO );
+while ( $server->is_alive ) {
+    my @events = $server->process( $events->extract_min() // $I_ZERO );
 
     $events->insert($_) for @events;
     $events->insert($I_ALRM) if retrieve_caught('ALRM');
