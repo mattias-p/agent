@@ -2,16 +2,25 @@ package Dispatcher;
 use strict;
 use warnings;
 
+use Carp qw( confess );
 use Heap::Binary;
 use POSIX ":sys_wait_h";
-use Signal qw( uninstall_handlers );
 
 sub new {
-    my $class = shift;
+    my ( $class, %args ) = @_;
+
+    my $action = delete $args{action};
+    my $p_fail = delete $args{p_fail};
+
+    !%args or confess 'unexpected arguments';
+
+    $p_fail //= 0.0;
 
     my $self = bless {}, $class;
 
-    $self->{jobs} = {};
+    $self->{jobs}   = {};
+    $self->{action} = $action;
+    $self->{p_fail} = $p_fail;
 
     return $self;
 }
@@ -23,26 +32,27 @@ sub jobs {
 }
 
 sub dispatch {
-    my $self = shift;
-    my $jid  = shift;
+    my $self   = shift;
+    my $jid    = shift;
+    my $finish = shift;
 
-    if ( rand() < 0.75 ) {
-        my $pid = fork;
-        if ( !defined $pid ) {
-            return;
-        }
-        if ( $pid == 0 ) {
-            uninstall_handlers();
-            sleep( 5 + rand 11 );
-            exit 0;
-        }
-        $self->{jobs}{$pid} = $jid;
-
-        return $pid;
-    }
-    else {
+    if ($self->{p_fail} > 0 && rand() < $self->{p_fail} ) {
+        warn "injected failure";
         return;
     }
+
+    my $pid = fork;
+    if ( !defined $pid ) {
+        return;
+    }
+    if ( $pid == 0 ) {
+        $self->{action}($jid);
+        $finish->();
+        exit 0;
+    }
+    $self->{jobs}{$pid} = $jid;
+
+    return $pid;
 }
 
 sub _reap {

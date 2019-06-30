@@ -2,10 +2,18 @@ package Config;
 use strict;
 use warnings;
 
+use Carp qw( confess );
+
 sub new {
-    my $class = shift;
+    my ( $class, %args ) = @_;
+
+    my $p_fail = delete $args{p_fail};
+
+    !%args or confess 'unexpected arguments';
 
     my $self = bless {}, $class;
+
+    $self->{p_fail} = $p_fail;
 
     return $self;
 }
@@ -13,11 +21,12 @@ sub new {
 sub load {
     my $self = shift;
 
-    my $new_data = rand() < 0.75;
+    if ($self->{p_fail} > 0 && rand() < $self->{p_fail} ) {
+        warn "injected failure";
+        return;
+    }
 
-    $self->{data} ||= $new_data;
-
-    return !!$new_data;
+    return 1;
 }
 
 sub is_loaded {

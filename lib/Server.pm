@@ -235,24 +235,22 @@ sub do_run {
     my $self = shift;
 
     my $jid = $self->{allocator}->claim();
-    if ( !defined $jid ) {
-        say "No jobs available";
-        return $I_DONE;
-    }
+    return $I_DONE if !defined $jid;
 
-    say "Claimed job $jid";
-
-    my $pid = $self->{dispatcher}->dispatch( $jid );
+    my $pid = $self->{dispatcher}->dispatch( $jid, sub {
+        say "Releasing job $jid after completion";
+        $self->{allocator}->release( $jid );
+    });
     if ( $pid ) {
         say "Dispatched job $jid to process $pid";
         $self->{timeout}->insert( $self->{config}->timeout(), $pid );
     }
     else {
-        say "Failed to dispatch job $jid";
+        say "Failed to dispatch job $jid, releasing it again";
         $self->{allocator}->release( $jid );
     }
 
-    return ();
+    return;
 }
 
 sub do_reap {

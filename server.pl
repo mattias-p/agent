@@ -10,7 +10,7 @@ use Heap::Binary;
 use Idle;
 use Readonly;
 use Server qw( cmp_inputs $I_IDLE $I_REAP $I_TIMEOUT $I_WORK $I_LOAD $I_TERM );
-use Signal qw( install_handler retrieve_caught );
+use Signal qw( install_handler retrieve_caught uninstall_handlers );
 use Timeout;
 
 say "$$";
@@ -20,12 +20,26 @@ install_handler( 'HUP' );
 install_handler( 'TERM' );
 install_handler( 'USR1' );
 
+sub work {
+    my $jid = shift;
+    uninstall_handlers();
+    sleep( 5 + rand 11 );
+    return;
+}
+
 my $server = Server->new(
-    config     => Config->new(),
-    allocator  => Allocator->new(),
-    dispatcher => Dispatcher->new(),
-    timeout    => Timeout->new(),
-    idle       => Idle->new(),
+    config => Config->new(
+        p_fail => 0.2,
+    ),
+    allocator => Allocator->new(
+        p_fail => 0.2,
+    ),
+    dispatcher => Dispatcher->new(
+        action => \&work,
+        p_fail => 0.2,
+    ),
+    timeout => Timeout->new(),
+    idle    => Idle->new(),
 );
 
 my $events = Heap::Binary->new( \&cmp_inputs );
