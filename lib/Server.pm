@@ -218,7 +218,7 @@ sub process {
     my $self  = shift;
     my $input = shift;
 
-    return $self->{fsm}->process( $input, $self );
+    return $self->{fsm}->process( $input );
 }
 
 sub is_alive {
