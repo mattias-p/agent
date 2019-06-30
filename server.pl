@@ -31,7 +31,7 @@ my $server = Server->new(
 my $events = Heap::Binary->new( \&cmp_inputs );
 $events->insert($I_LOAD);
 
-while ( $server->is_alive ) {
+while ( !$server->is_final ) {
     my @events = $server->process( $events->extract_min() // $I_IDLE );
 
     $events->insert($_) for @events;

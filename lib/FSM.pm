@@ -43,7 +43,7 @@ sub new {
     return $self;
 }
 
-sub current {
+sub state {
     my $self = shift;
     return $self->{state};
 }

@@ -7,6 +7,8 @@ use Exporter qw( import );
 use FSM::Builder;
 use Readonly;
 
+use base 'FSM';
+
 our @EXPORT_OK = qw( cmp_inputs $S_LOAD $S_RUN $S_REAP $S_TIMEOUT $S_IDLE $S_GRACE_REAP $S_GRACE_TIMEOUT $S_GRACE_IDLE $S_SHUTDOWN $S_EXIT $I_IDLE $I_DONE $I_REAP $I_WORK $I_TIMEOUT $I_LOAD $I_TERM $I_EXIT );
 
 Readonly our $S_LOAD          => 'LOAD';
@@ -190,9 +192,8 @@ sub new {
     my $timeout    = delete $args{timeout};
     my $idle       = delete $args{idle};
 
-    my $self = bless {}, $class;
-
-    $self->{fsm} = $BUILDER->build(
+    my $self;
+    $self = $BUILDER->build(
         initial_state   => $S_LOAD,
         final_states    => [ $S_EXIT ],
         output_function => sub {
@@ -212,19 +213,6 @@ sub new {
     $self->{idle}       = $idle;
 
     return $self;
-}
-
-sub process {
-    my $self  = shift;
-    my $input = shift;
-
-    return $self->{fsm}->process( $input );
-}
-
-sub is_alive {
-    my $self  = shift;
-
-    return !$self->{fsm}->is_final;
 }
 
 sub do_load {
