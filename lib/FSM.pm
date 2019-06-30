@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Carp qw( confess );
-use FSM::Util;
+use FSM::Util qw( is_transition_mapping is_name is_arrayref is_coderef );
 use List::Util qw( all );
 
 sub new {
@@ -15,22 +15,21 @@ sub new {
     my $output_function = delete $args{output_function};
     !%args or confess 'unexpected args';
 
-    FSM::Util::is_transition_mapping($transitions)
+    is_transition_mapping($transitions)
       or confess 'transitions argument must be a valid transition mapping';
     my %defined_states =
       map { $_ => 1 } keys %{ [ values %{$transitions} ]->[0] };
 
-    ( FSM::Util::is_name($initial_state)
-          && exists $defined_states{$initial_state} )
+    ( is_name($initial_state) && exists $defined_states{$initial_state} )
       or confess
       'initial_state argument must be defined in the transitions argument';
 
-    ( FSM::Util::is_arrayref($final_states)
-          && all { exists $defined_states{$_} } @{$final_states} )
+    ( is_arrayref($final_states) && all { exists $defined_states{$_} }
+        @{$final_states} )
       or confess 'final_states argument must be an arrayref of states '
       . 'defined in the transitions argument';
 
-    FSM::Util::is_coderef($output_function)
+    is_coderef($output_function)
       or confess 'output_function argument must be a coderef';
 
     my $self = bless {}, $class;

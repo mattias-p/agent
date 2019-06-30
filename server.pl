@@ -7,7 +7,6 @@ use App::Allocator;
 use App::Config;
 use App::Server qw( cmp_inputs $I_IDLE $I_REAP $I_TIMEOUT $I_WORK $I_LOAD $I_TERM );
 use Heap::Binary;
-use Readonly;
 use Unix::AlarmQueue;
 use Unix::Dispatcher;
 use Unix::Idler;
