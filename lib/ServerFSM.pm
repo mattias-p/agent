@@ -31,8 +31,8 @@ Readonly our $I_USR1 => 'usr1';
 Readonly our $I_ZERO => 'zero';
 
 Readonly our %INPUT_PRIORITIES => (
-    $I_DONE => 0,
-    $I_EXIT => 1,
+    $I_EXIT => 0,
+    $I_DONE => 1,
     $I_TERM => 2,
     $I_CHLD => 3,
     $I_HUP  => 4,
@@ -60,12 +60,12 @@ $BUILDER->define_input(
 
 $BUILDER->define_input(
     $I_DONE => (
-        $S_LOAD        => $S_RUN,
+        $S_LOAD        => $S_IDLE,
         $S_RUN         => $S_IDLE,
         $S_ALARM       => $S_IDLE,
         $S_IDLE        => $S_IDLE,
         $S_REAP        => $S_IDLE,
-        $S_WATCH_GRACE => $S_IDLE_GRACE,
+        $S_WATCH_GRACE => $S_EXIT,
         $S_IDLE_GRACE  => $S_EXIT,
         $S_REAP_GRACE  => $S_EXIT,
         $S_SHUTDOWN    => $S_EXIT,
@@ -231,37 +231,43 @@ sub do_run {
 
 sub do_reap {
     my $self = shift;
-    say "Reaping";
     my %jobs = $self->{dispatcher}->reap();
     for my $pid ( keys %jobs ) {
         my ( $jid, $status ) = @{ $jobs{$pid} };
-        say "Reaped pid $pid (status $status)";
-        say "Releasing job $jid";
+        say "Reaped pid $pid (status $status), releasing job $jid";
         $self->{allocator}->release( $jid );
     }
-    return $I_DONE;
+    return;
 }
 
 sub do_idle {
     my $self = shift;
-    say "Sleeping";
     pause;
     return;
 }
 
 sub do_alarm {
     my $self = shift;
-    say "Alarm!";
     my $pid = $self->{alarm}->extract_earliest();
     if ( $pid ) {
         my $jid = $self->{dispatcher}->kill( $pid );
         if ( $jid ) {
-            say "Killed pid $pid";
-            say "Releasing job $jid";
+            say "Killed pid $pid, releasing job $jid";
             $self->{allocator}->release( $jid );
         }
     }
-#    return $I_DONE;
+    return;
+}
+
+sub do_idle_grace {
+    my $self = shift;
+    if ( $self->{dispatcher}->jobs ) {
+        $self->do_idle;
+        return;
+    }
+    else {
+        return $I_DONE;
+    }
 }
 
 
@@ -273,7 +279,7 @@ my %actions = (
     $S_IDLE        => \&do_idle,
     $S_REAP_GRACE  => \&do_reap,
     $S_WATCH_GRACE => \&do_alarm,
-    $S_IDLE_GRACE  => \&do_idle,
+    $S_IDLE_GRACE  => \&do_idle_grace,
     $S_SHUTDOWN    => sub {
         say "Shutting down forcefully";
         return $I_DONE;

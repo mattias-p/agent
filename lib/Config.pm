@@ -27,7 +27,7 @@ sub is_loaded {
 }
 
 sub timeout {
-    return 5;
+    return 10;
 }
 
 1;

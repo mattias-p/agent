@@ -33,7 +33,9 @@ $event_stream->insert($I_HUP);
 
 while ( 1 ) {
     my $input = $event_stream->extract_min() // $I_ZERO;
+    say "Input: " . $input;
     $fsm->process($input);
+    say "State: " . $fsm->current;
     last if $fsm->current eq $S_EXIT;
     my @events = $agent->act( $fsm->current );
 

@@ -16,18 +16,24 @@ sub new {
     return $self;
 }
 
+sub jobs {
+    my $self = shift;
+
+    return values %{ $self->{jobs} };
+}
+
 sub dispatch {
     my $self = shift;
     my $jid  = shift;
 
-    if ( rand() < 0.5 ) {
+    if ( rand() < 0.75 ) {
         my $pid = fork;
         if ( !defined $pid ) {
             return;
         }
         if ( $pid == 0 ) {
             uninstall_handlers();
-            sleep 10;
+            sleep( 5 + rand 11 );
             exit 0;
         }
         $self->{jobs}{$pid} = $jid;

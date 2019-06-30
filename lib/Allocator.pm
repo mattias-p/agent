@@ -15,7 +15,7 @@ sub new {
 sub claim {
     my $self = shift;
 
-    if ( rand() < 0.5 ) {
+    if ( rand() < 0.75 ) {
         $self->{counter} += 1;
         return $self->{counter};
     }
