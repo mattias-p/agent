@@ -20,7 +20,6 @@ install_handler( 'HUP' );
 install_handler( 'TERM' );
 install_handler( 'USR1' );
 
-my $event_stream = Heap::Binary->new( \&cmp_inputs );
 my $fsm          = new_server_fsm();
 my $agent = ServerFSM->new(
     config     => Config->new(),
@@ -28,7 +27,14 @@ my $agent = ServerFSM->new(
     dispatcher => Dispatcher->new(),
     alarm      => Alarm->new(),
 );
-while ( $fsm->current ne $S_EXIT ) {
+
+my $event_stream = Heap::Binary->new( \&cmp_inputs );
+$event_stream->insert($I_HUP);
+
+while ( 1 ) {
+    my $input = $event_stream->extract_min() // $I_ZERO;
+    $fsm->process($input);
+    last if $fsm->current eq $S_EXIT;
     my @events = $agent->act( $fsm->current );
 
     $event_stream->insert($_) for @events;
@@ -37,8 +43,4 @@ while ( $fsm->current ne $S_EXIT ) {
     $event_stream->insert($I_HUP)  if retrieve_caught('HUP');
     $event_stream->insert($I_TERM) if retrieve_caught('TERM');
     $event_stream->insert($I_USR1) if retrieve_caught('USR1');
-
-    my $input = $event_stream->extract_min() // $I_ZERO;
-
-    $fsm->process($input);
 }
