@@ -21,14 +21,14 @@ Readonly our $S_WATCH_GRACE => 'WATCH_GRACE';
 Readonly our $S_SHUTDOWN    => 'SHUTDOWN';
 Readonly our $S_EXIT        => 'EXIT';
 
-Readonly our $I_ZERO => 'zero';
 Readonly our $I_DONE => 'done';
-Readonly our $I_CHLD => 'chld';
-Readonly our $I_USR1 => 'usr1';
-Readonly our $I_ALRM => 'alrm';
-Readonly our $I_HUP  => 'hup';
-Readonly our $I_TERM => 'term';
 Readonly our $I_EXIT => 'exit';
+Readonly our $I_TERM => 'term';
+Readonly our $I_CHLD => 'chld';
+Readonly our $I_HUP  => 'hup';
+Readonly our $I_ALRM => 'alrm';
+Readonly our $I_USR1 => 'usr1';
+Readonly our $I_ZERO => 'zero';
 
 Readonly our %INPUT_PRIORITIES => (
     $I_DONE => 0,
@@ -169,7 +169,9 @@ sub new_server_fsm {
 
 sub cmp_inputs {
     my ( $a, $b ) = @_;
-    $INPUT_PRIORITIES{ $a } <=> $INPUT_PRIORITIES{ $b }
+    my $pa = $INPUT_PRIORITIES{$a};
+    my $pb = $INPUT_PRIORITIES{$b};
+    ( $pa // 1000 ) <=> ( $pb // 1000 )
 }
 
 sub new {
@@ -233,7 +235,8 @@ sub do_reap {
     my %jobs = $self->{dispatcher}->reap();
     for my $pid ( keys %jobs ) {
         my ( $jid, $status ) = @{ $jobs{$pid} };
-        say "Releasing job $jid (pid $pid, status $status)";
+        say "Reaped pid $pid (status $status)";
+        say "Releasing job $jid";
         $self->{allocator}->release( $jid );
     }
     return $I_DONE;
@@ -248,13 +251,17 @@ sub do_idle {
 
 sub do_alarm {
     my $self = shift;
-    say "Watching";
+    say "Alarm!";
     my $pid = $self->{alarm}->extract_earliest();
     if ( $pid ) {
-        say "Killing child process $pid";
-        kill 'KILL', $pid;
+        my $jid = $self->{dispatcher}->kill( $pid );
+        if ( $jid ) {
+            say "Killed pid $pid";
+            say "Releasing job $jid";
+            $self->{allocator}->release( $jid );
+        }
     }
-    return $I_DONE;
+#    return $I_DONE;
 }
 
 

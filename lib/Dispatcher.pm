@@ -48,11 +48,26 @@ sub reap {
         my $status = waitpid( $pid, WNOHANG );
         if ( $status != 0 ) {
             my $jid = delete $self->{jobs}{$pid};
-            $reaped{$pid} = [ $jid, $status ];
+            $reaped{$pid} = [ $jid, ${^CHILD_ERROR_NATIVE} ];
         }
     }
 
     return %reaped;
+}
+
+sub kill {
+    my $self = shift;
+    my $pid  = shift;
+
+    my $jid = $self->{jobs}{$pid};
+
+    if ( $jid ) {
+        kill 'KILL', $pid;
+        return $jid;
+    }
+    else {
+        return;
+    }
 }
 
 1;
