@@ -194,9 +194,11 @@ sub new {
     my $dispatcher = delete $args{dispatcher};
     my $alarms     = delete $args{alarms};
     my $idler      = delete $args{idler};
+    !%args or confess 'unrecognized arguments';
 
     my $self;
     $self = $BUILDER->build(
+        class           => $class,
         initial_state   => $S_LOAD,
         final_states    => [ $S_EXIT ],
         output_function => sub {

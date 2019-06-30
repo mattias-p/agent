@@ -35,14 +35,16 @@ sub define_input {
 sub build {
     my ( $self, %args ) = @_;
 
-    my $initial_state = delete $args{initial_state};
-    my $final_states = delete $args{final_states};
+    my $initial_state   = delete $args{initial_state};
+    my $final_states    = delete $args{final_states};
     my $output_function = delete $args{output_function};
+    my $class           = delete $args{class};
 
     !%args or confess 'unrecognized arguments';
 
-    $final_states //= [];
+    $final_states    //= [];
     $output_function //= sub { $_[0] };
+    $class           //= 'FSM';
 
     exists $self->{reference_states} or confess 'no transitions were defined';
 
@@ -51,7 +53,8 @@ sub build {
 
     ref $output_function eq 'CODE' or confess 'output_function argument must be a coderef';
 
-    my $fsm = FSM->new(
+    my $fsm = FSM::new(
+        $class,
         initial_state   => $initial_state,
         final_states    => $final_states,
         transitions     => dclone $self->{transitions},
