@@ -187,7 +187,7 @@ sub new {
     my $config     = delete $args{config};
     my $allocator  = delete $args{allocator};
     my $dispatcher = delete $args{dispatcher};
-    my $alarm      = delete $args{alarm};
+    my $timeout    = delete $args{timeout};
     my $idle       = delete $args{idle};
 
     my $self = bless {}, $class;
@@ -208,7 +208,7 @@ sub new {
     $self->{config}     = $config;
     $self->{allocator}  = $allocator;
     $self->{dispatcher} = $dispatcher;
-    $self->{alarm}      = $alarm;
+    $self->{timeout}    = $timeout;
     $self->{idle}       = $idle;
 
     return $self;
@@ -243,22 +243,22 @@ sub do_load {
 sub do_run {
     my $self = shift;
 
-    my $id = $self->{allocator}->claim();
-    if ( !defined $id ) {
+    my $jid = $self->{allocator}->claim();
+    if ( !defined $jid ) {
         say "No jobs available";
         return $I_DONE;
     }
 
-    say "Claimed job $id";
+    say "Claimed job $jid";
 
-    my $pid = $self->{dispatcher}->dispatch( $id );
+    my $pid = $self->{dispatcher}->dispatch( $jid );
     if ( $pid ) {
-        say "Dispatched job $id to process $pid";
-        $self->{alarm}->insert( $self->{config}->timeout(), $pid );
+        say "Dispatched job $jid to process $pid";
+        $self->{timeout}->insert( $self->{config}->timeout(), $pid );
     }
     else {
-        say "Failed to dispatch job $id";
-        $self->{allocator}->release( $id );
+        say "Failed to dispatch job $jid";
+        $self->{allocator}->release( $jid );
     }
 
     return ();
@@ -283,7 +283,7 @@ sub do_idle {
 
 sub do_timeout {
     my $self = shift;
-    my $pid = $self->{alarm}->extract_earliest();
+    my $pid = $self->{timeout}->extract_earliest();
     if ( $pid ) {
         my $jid = $self->{dispatcher}->kill( $pid );
         if ( $jid ) {

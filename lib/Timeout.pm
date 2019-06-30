@@ -1,4 +1,4 @@
-package Alarm;
+package Timeout;
 use strict;
 use warnings;
 

@@ -3,7 +3,6 @@ use strict;
 use warnings;
 use feature 'say';
 
-use Alarm;
 use Allocator;
 use Config;
 use Dispatcher;
@@ -12,6 +11,7 @@ use Idle;
 use Readonly;
 use Server qw( cmp_inputs $I_IDLE $I_REAP $I_TIMEOUT $I_WORK $I_LOAD $I_TERM );
 use Signal qw( install_handler retrieve_caught );
+use Timeout;
 
 say "$$";
 install_handler( 'ALRM' );
@@ -24,7 +24,7 @@ my $server = Server->new(
     config     => Config->new(),
     allocator  => Allocator->new(),
     dispatcher => Dispatcher->new(),
-    alarm      => Alarm->new(),
+    timeout    => Timeout->new(),
     idle       => Idle->new(),
 );
 
