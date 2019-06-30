@@ -21,6 +21,19 @@ Readonly our $S_WATCH_GRACE => 'WATCH_GRACE';
 Readonly our $S_SHUTDOWN    => 'SHUTDOWN';
 Readonly our $S_EXIT        => 'EXIT';
 
+Readonly my %ENTRY_ACTIONS => (
+    $S_LOAD        => \&do_load,
+    $S_RUN         => \&do_run,
+    $S_REAP        => \&do_reap,
+    $S_ALARM       => \&do_alarm,
+    $S_IDLE        => \&do_idle,
+    $S_REAP_GRACE  => \&do_reap,
+    $S_WATCH_GRACE => \&do_alarm,
+    $S_IDLE_GRACE  => \&do_idle_grace,
+    $S_SHUTDOWN    => \&do_shutdown,
+    $S_EXIT        => \&do_exit,
+);
+
 Readonly our $I_DONE => 'done';
 Readonly our $I_EXIT => 'exit';
 Readonly our $I_TERM => 'term';
@@ -192,6 +205,20 @@ sub new {
     return $self;
 }
 
+sub process {
+    my $self  = shift;
+    my $input = shift;
+
+    $self->{fsm}->process( $input );
+    return $ENTRY_ACTIONS{$self->{fsm}->current}->( $self );
+}
+
+sub is_alive {
+    my $self  = shift;
+
+    return $self->{fsm}->current ne $S_EXIT;
+}
+
 sub do_load {
     my $self = shift;
 
@@ -283,24 +310,8 @@ sub do_shutdown {
     return $I_DONE;
 }
 
-
-my %actions = (
-    $S_LOAD        => \&do_load,
-    $S_RUN         => \&do_run,
-    $S_REAP        => \&do_reap,
-    $S_ALARM       => \&do_alarm,
-    $S_IDLE        => \&do_idle,
-    $S_REAP_GRACE  => \&do_reap,
-    $S_WATCH_GRACE => \&do_alarm,
-    $S_IDLE_GRACE  => \&do_idle_grace,
-    $S_SHUTDOWN    => \&do_shutdown,
-);
-
-sub act {
-    my $self  = shift;
-    my $state = shift;
-
-    return $actions{$state}->( $self );
+sub do_exit {
+    return;
 }
 
 1;

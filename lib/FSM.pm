@@ -1,6 +1,7 @@
 package FSM;
 use strict;
 use warnings;
+use feature 'say';
 
 use Carp qw( confess );
 use FSM::Util;
@@ -61,6 +62,9 @@ sub process {
       or confess '$input must be a defined input';
 
     $self->{state} = $self->{transitions}{$input}{ $self->{state} };
+
+    say "Input: " . $input;
+    say "State: " . $self->{state};
 
     return $self->{output}->( $self->{state}, $input );
 }

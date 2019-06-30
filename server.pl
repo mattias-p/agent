@@ -31,13 +31,10 @@ my $agent = ServerFSM->new(
 my $event_stream = Heap::Binary->new( \&cmp_inputs );
 $event_stream->insert($I_HUP);
 
-while ( 1 ) {
+while ( $agent->is_alive ) {
     my $input = $event_stream->extract_min() // $I_ZERO;
-    say "Input: " . $input;
-    $fsm->process($input);
-    say "State: " . $fsm->current;
-    last if $fsm->current eq $S_EXIT;
-    my @events = $agent->act( $fsm->current );
+
+    my @events = $agent->process($input);
 
     $event_stream->insert($_) for @events;
     $event_stream->insert($I_ALRM) if retrieve_caught('ALRM');
