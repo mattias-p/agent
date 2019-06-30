@@ -1,4 +1,4 @@
-package AlarmQueue;
+package Unix::AlarmQueue;
 use strict;
 use warnings;
 

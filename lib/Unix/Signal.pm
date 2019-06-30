@@ -1,4 +1,4 @@
-package Signal;
+package Unix::Signal;
 use strict;
 use warnings;
 

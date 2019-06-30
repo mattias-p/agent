@@ -3,41 +3,41 @@ use strict;
 use warnings;
 use feature 'say';
 
-use AlarmQueue;
-use Allocator;
-use Config;
-use Dispatcher;
+use App::Allocator;
+use App::Config;
+use App::Server qw( cmp_inputs $I_IDLE $I_REAP $I_TIMEOUT $I_WORK $I_LOAD $I_TERM );
 use Heap::Binary;
-use Idler;
 use Readonly;
-use Server qw( cmp_inputs $I_IDLE $I_REAP $I_TIMEOUT $I_WORK $I_LOAD $I_TERM );
-use Signal qw( install_handler retrieve_caught uninstall_handlers );
+use Unix::AlarmQueue;
+use Unix::Dispatcher;
+use Unix::Idler;
+use Unix::Signal qw( install_handler retrieve_caught uninstall_handlers );
 
 sub work {
     my $jid = shift;
     uninstall_handlers();    # reset signal handlers for child process
-    sleep( 5 + rand 11 );    # pretend doing something
+    sleep( 5 + rand 11 );    # pretend to do something
     return;
 }
 
-my $config = Config->new( p_fail => 0.2 );
+my $alarms = Unix::AlarmQueue->new();
 
-my $allocator = Allocator->new( p_fail => 0.2 );
-
-my $dispatcher = Dispatcher->new(
+my $dispatcher = Unix::Dispatcher->new(
     action => \&work,
     p_fail => 0.2,
 );
 
-my $alarms = AlarmQueue->new();
+my $idler = Unix::Idler->new();
 
-my $idler = Idler->new();
+my $config = App::Config->new( p_fail => 0.2 );
 
-my $server = Server->new(
-    config     => $config,
-    allocator  => $allocator,
-    dispatcher => $dispatcher,
+my $allocator = App::Allocator->new( p_fail => 0.2 );
+
+my $server = App::Server->new(
     alarms     => $alarms,
+    allocator  => $allocator,
+    config     => $config,
+    dispatcher => $dispatcher,
     idler      => $idler,
 );
 
@@ -61,3 +61,5 @@ while ( !$server->is_final ) {
     $events->insert($I_TERM)    if retrieve_caught('TERM');
     $events->insert($I_WORK)    if retrieve_caught('USR1');
 }
+
+exit 0;

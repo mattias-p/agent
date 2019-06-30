@@ -1,4 +1,4 @@
-package Idler;
+package Unix::Idler;
 use strict;
 use warnings;
 

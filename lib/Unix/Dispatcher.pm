@@ -1,4 +1,4 @@
-package Dispatcher;
+package Unix::Dispatcher;
 use strict;
 use warnings;
 

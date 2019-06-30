@@ -1,4 +1,4 @@
-package Allocator;
+package App::Allocator;
 use strict;
 use warnings;
 
