@@ -37,18 +37,25 @@ sub build {
 
     my $initial_state = delete $args{initial_state};
     my $final_states = delete $args{final_states};
+    my $output_function = delete $args{output_function};
 
     !%args or confess 'unrecognized arguments';
+
+    $final_states //= [];
+    $output_function //= sub { $_[0] };
 
     exists $self->{reference_states} or confess 'no transitions were defined';
 
     exists $self->{reference_states}{$initial_state} or confess 'unrecognized state specified as initial state';
     all { exists $self->{reference_states}{$_} } @{ $final_states } or confess 'unrecognized state among final states';
 
+    ref $output_function eq 'CODE' or confess 'output_function argument must be a coderef';
+
     my $fsm = FSM->new(
-        initial_state => $initial_state,
-        final_states => $final_states,
-        transitions => dclone $self->{transitions},
+        initial_state   => $initial_state,
+        final_states    => $final_states,
+        transitions     => dclone $self->{transitions},
+        output_function => $output_function,
     );
 
     return $fsm;

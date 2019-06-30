@@ -10,7 +10,7 @@ use Dispatcher;
 use Heap::Binary;
 use POSIX qw( pause );
 use Readonly;
-use ServerFSM qw( new_server_fsm cmp_inputs $S_EXIT $I_ZERO $I_CHLD $I_ALRM $I_USR1 $I_HUP $I_TERM );
+use ServerFSM qw( cmp_inputs $S_EXIT $I_ZERO $I_CHLD $I_ALRM $I_USR1 $I_HUP $I_TERM );
 use Signal qw( install_handler retrieve_caught );
 
 say "$$";
@@ -20,7 +20,6 @@ install_handler( 'HUP' );
 install_handler( 'TERM' );
 install_handler( 'USR1' );
 
-my $fsm          = new_server_fsm();
 my $agent = ServerFSM->new(
     config     => Config->new(),
     allocator  => Allocator->new(),
@@ -28,18 +27,16 @@ my $agent = ServerFSM->new(
     alarm      => Alarm->new(),
 );
 
-my $event_stream = Heap::Binary->new( \&cmp_inputs );
-$event_stream->insert($I_HUP);
+my $events = Heap::Binary->new( \&cmp_inputs );
+$events->insert($I_HUP);
 
 while ( $agent->is_alive ) {
-    my $input = $event_stream->extract_min() // $I_ZERO;
+    my @events = $agent->process( $events->extract_min() // $I_ZERO );
 
-    my @events = $agent->process($input);
-
-    $event_stream->insert($_) for @events;
-    $event_stream->insert($I_ALRM) if retrieve_caught('ALRM');
-    $event_stream->insert($I_CHLD) if retrieve_caught('CHLD');
-    $event_stream->insert($I_HUP)  if retrieve_caught('HUP');
-    $event_stream->insert($I_TERM) if retrieve_caught('TERM');
-    $event_stream->insert($I_USR1) if retrieve_caught('USR1');
+    $events->insert($_) for @events;
+    $events->insert($I_ALRM) if retrieve_caught('ALRM');
+    $events->insert($I_CHLD) if retrieve_caught('CHLD');
+    $events->insert($I_HUP)  if retrieve_caught('HUP');
+    $events->insert($I_TERM) if retrieve_caught('TERM');
+    $events->insert($I_USR1) if retrieve_caught('USR1');
 }

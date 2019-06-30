@@ -1,7 +1,6 @@
 package FSM;
 use strict;
 use warnings;
-use feature 'say';
 
 use Carp qw( confess );
 use FSM::Util;
@@ -16,22 +15,23 @@ sub new {
     my $output_function = delete $args{output_function};
     !%args or confess 'unexpected args';
 
-    $final_states //= [];
-    $output_function //= sub { $_[0] };
-
     FSM::Util::is_transition_mapping($transitions)
       or confess 'transitions argument must be a valid transition mapping';
     my %defined_states =
       map { $_ => 1 } keys %{ [ values %{$transitions} ]->[0] };
 
-      ( FSM::Util::is_name($initial_state) && exists $defined_states{$initial_state} )
+    ( FSM::Util::is_name($initial_state)
+          && exists $defined_states{$initial_state} )
       or confess
       'initial_state argument must be defined in the transitions argument';
 
-      ( FSM::Util::is_arrayref($final_states) && all { exists $defined_states{$_} }
-        @{$final_states} )
+    ( FSM::Util::is_arrayref($final_states)
+          && all { exists $defined_states{$_} } @{$final_states} )
       or confess 'final_states argument must be an arrayref of states '
       . 'defined in the transitions argument';
+
+    FSM::Util::is_coderef($output_function)
+      or confess 'output_function argument must be a coderef';
 
     my $self = bless {}, $class;
 
@@ -62,9 +62,6 @@ sub process {
       or confess '$input must be a defined input';
 
     $self->{state} = $self->{transitions}{$input}{ $self->{state} };
-
-    say "Input: " . $input;
-    say "State: " . $self->{state};
 
     return $self->{output}->( $self->{state}, $input );
 }

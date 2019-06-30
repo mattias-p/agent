@@ -13,7 +13,7 @@ sub new {
 sub load {
     my $self = shift;
 
-    my $new_data = rand() < 0.5;
+    my $new_data = rand() < 0.75;
 
     $self->{data} ||= $new_data;
 

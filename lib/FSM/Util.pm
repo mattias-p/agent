@@ -5,7 +5,7 @@ use warnings;
 use Exporter qw( import );
 use List::Util qw( all );
 
-our @EXPORT_OK = qw( is_arrayref is_name is_state_mapping is_transition_mapping );
+our @EXPORT_OK = qw( is_arrayref is_coderef is_name is_state_mapping is_transition_mapping );
 
 sub diff_keys {
     my $left  = shift;
@@ -31,6 +31,12 @@ sub right_only {
 sub is_arrayref {
     my $value = shift;
     return 0 unless ref $value eq 'ARRAY';
+    return 1;
+}
+
+sub is_coderef {
+    my $value = shift;
+    return 0 unless ref $value eq 'CODE';
     return 1;
 }
 
