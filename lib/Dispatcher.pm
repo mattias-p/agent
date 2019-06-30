@@ -2,6 +2,7 @@ package Dispatcher;
 use strict;
 use warnings;
 
+use Heap::Binary;
 use POSIX ":sys_wait_h";
 use Signal qw( uninstall_handlers );
 
@@ -17,11 +18,11 @@ sub new {
 
 sub dispatch {
     my $self = shift;
-    my $jid   = shift;
+    my $jid  = shift;
 
     if ( rand() < 0.5 ) {
         my $pid = fork;
-        if (!defined $pid) {
+        if ( !defined $pid ) {
             return;
         }
         if ( $pid == 0 ) {
@@ -37,7 +38,6 @@ sub dispatch {
         return;
     }
 }
-
 
 sub reap {
     my $self = shift;

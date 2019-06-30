@@ -26,4 +26,8 @@ sub is_loaded {
     return !!$self->{data};
 }
 
+sub timeout {
+    return 5;
+}
+
 1;
