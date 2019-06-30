@@ -5,7 +5,7 @@ use feature 'say';
 
 use App::Allocator;
 use App::Config;
-use App::Server qw( cmp_inputs $I_IDLE $I_REAP $I_TIMEOUT $I_WORK $I_LOAD $I_TERM );
+use App::Agent qw( cmp_inputs $I_IDLE $I_REAP $I_TIMEOUT $I_WORK $I_LOAD $I_TERM );
 use Heap::Binary;
 use Unix::AlarmQueue;
 use Unix::Dispatcher;
@@ -32,7 +32,7 @@ my $config = App::Config->new( p_fail => 0.2 );
 
 my $allocator = App::Allocator->new( p_fail => 0.2 );
 
-my $server = App::Server->new(
+my $agent = App::Agent->new(
     alarms     => $alarms,
     allocator  => $allocator,
     config     => $config,
@@ -50,8 +50,8 @@ install_handler( 'HUP' );
 install_handler( 'TERM' );
 install_handler( 'USR1' );
 
-while ( !$server->is_final ) {
-    my @events = $server->process( $events->extract_min() // $I_IDLE );
+while ( !$agent->is_final ) {
+    my @events = $agent->process( $events->extract_min() // $I_IDLE );
 
     $events->insert($_) for @events;
     $events->insert($I_TIMEOUT) if retrieve_caught('ALRM');

@@ -1,4 +1,4 @@
-package App::Server;
+package App::Agent;
 use strict;
 use warnings;
 use feature 'say';
