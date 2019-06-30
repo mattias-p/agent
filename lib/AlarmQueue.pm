@@ -1,4 +1,4 @@
-package Timeout;
+package AlarmQueue;
 use strict;
 use warnings;
 

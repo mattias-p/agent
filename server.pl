@@ -3,15 +3,46 @@ use strict;
 use warnings;
 use feature 'say';
 
+use AlarmQueue;
 use Allocator;
 use Config;
 use Dispatcher;
 use Heap::Binary;
-use Idle;
+use Idler;
 use Readonly;
 use Server qw( cmp_inputs $I_IDLE $I_REAP $I_TIMEOUT $I_WORK $I_LOAD $I_TERM );
 use Signal qw( install_handler retrieve_caught uninstall_handlers );
-use Timeout;
+
+sub work {
+    my $jid = shift;
+    uninstall_handlers();    # reset signal handlers for child process
+    sleep( 5 + rand 11 );    # pretend doing something
+    return;
+}
+
+my $config = Config->new( p_fail => 0.2 );
+
+my $allocator = Allocator->new( p_fail => 0.2 );
+
+my $dispatcher = Dispatcher->new(
+    action => \&work,
+    p_fail => 0.2,
+);
+
+my $alarms = AlarmQueue->new();
+
+my $idler = Idler->new();
+
+my $server = Server->new(
+    config     => $config,
+    allocator  => $allocator,
+    dispatcher => $dispatcher,
+    alarms     => $alarms,
+    idler      => $idler,
+);
+
+my $events = Heap::Binary->new( \&cmp_inputs );
+$events->insert($I_LOAD);
 
 say "$$";
 install_handler( 'ALRM' );
@@ -19,31 +50,6 @@ install_handler( 'CHLD' );
 install_handler( 'HUP' );
 install_handler( 'TERM' );
 install_handler( 'USR1' );
-
-sub work {
-    my $jid = shift;
-    uninstall_handlers();
-    sleep( 5 + rand 11 );
-    return;
-}
-
-my $server = Server->new(
-    config => Config->new(
-        p_fail => 0.2,
-    ),
-    allocator => Allocator->new(
-        p_fail => 0.2,
-    ),
-    dispatcher => Dispatcher->new(
-        action => \&work,
-        p_fail => 0.2,
-    ),
-    timeout => Timeout->new(),
-    idle    => Idle->new(),
-);
-
-my $events = Heap::Binary->new( \&cmp_inputs );
-$events->insert($I_LOAD);
 
 while ( !$server->is_final ) {
     my @events = $server->process( $events->extract_min() // $I_IDLE );

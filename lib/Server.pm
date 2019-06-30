@@ -192,8 +192,8 @@ sub new {
     my $config     = delete $args{config};
     my $allocator  = delete $args{allocator};
     my $dispatcher = delete $args{dispatcher};
-    my $timeout    = delete $args{timeout};
-    my $idle       = delete $args{idle};
+    my $alarms     = delete $args{alarms};
+    my $idler      = delete $args{idler};
 
     my $self;
     $self = $BUILDER->build(
@@ -203,8 +203,7 @@ sub new {
             my $state = shift;
             my $input = shift;
 
-            say "Input: " . $input;
-            say "State: " . $state;
+            say "Input($input) -> State($state)";
 
             return $ENTRY_ACTIONS{$state}->( $self );
         },
@@ -212,8 +211,8 @@ sub new {
     $self->{config}     = $config;
     $self->{allocator}  = $allocator;
     $self->{dispatcher} = $dispatcher;
-    $self->{timeout}    = $timeout;
-    $self->{idle}       = $idle;
+    $self->{alarms}     = $alarms;
+    $self->{idler}      = $idler;
 
     return $self;
 }
@@ -243,7 +242,7 @@ sub do_run {
     });
     if ( $pid ) {
         say "Dispatched job $jid to process $pid";
-        $self->{timeout}->insert( $self->{config}->timeout(), $pid );
+        $self->{alarms}->insert( $self->{config}->timeout(), $pid );
     }
     else {
         say "Failed to dispatch job $jid, releasing it again";
@@ -266,13 +265,13 @@ sub do_reap {
 
 sub do_idle {
     my $self = shift;
-    $self->{idle}->idle();
+    $self->{idler}->idle();
     return;
 }
 
 sub do_timeout {
     my $self = shift;
-    my $pid = $self->{timeout}->extract_earliest();
+    my $pid = $self->{alarms}->extract_earliest();
     if ( $pid ) {
         my $jid = $self->{dispatcher}->kill( $pid );
         if ( $jid ) {

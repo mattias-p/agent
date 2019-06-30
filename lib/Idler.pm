@@ -1,4 +1,4 @@
-package Idle;
+package Idler;
 use strict;
 use warnings;
 
