@@ -2,57 +2,73 @@ package Unix::AlarmQueue;
 use strict;
 use warnings;
 
-use Heap::Binary;
+use Carp qw( confess );
 
 sub new {
-    my $class = shift;
+    my ($class, %args) = @_;
+
+    my $time = delete $args{time};
+
+    !%args or confess 'unrecognized arguments';
+
+    $time //= \&CORE::time;
 
     my $self = bless {}, $class;
     
-    $self->{timeouts} = Heap::Binary->new( sub { $_[0][0] <=> $_[1][0] } );
+    $self->{deadlines} = [];
+    $self->{time}      = $time;
 
     return $self;
 }
 
-sub insert {
+sub add_timeout {
     my $self    = shift;
     my $timeout = shift;
-    my $data    = shift;
 
-    $self->{timeouts}->insert( [time() + $timeout, $data] );
-    $self->_update;
+    my $now = $self->{time}();
 
+    my $deadline = $now + $timeout;
+    my $old_deadline = $self->{deadlines}[0];
+    push @{ $self->{deadlines} }, $deadline;
+    $self->{deadlines} = [ sort @{ $self->{deadlines} } ];
+    if ( !defined $old_deadline || $deadline < $old_deadline ) {
+        $self->_set_alarm;
+    }
     return;
 }
 
-sub extract_earliest {
+sub next_timeout {
     my $self = shift;
 
-    my $item = $self->{timeouts}->extract_min();
-    if ( $item ) {
-        $self->_update;
-        return $item->[1];
+    shift @{ $self->{deadlines} };
+    if ( @{ $self->{deadlines} } ) {
+        $self->_set_alarm;
     }
-    else {
-        return;
-    }
+    return;
 }
 
-sub _update {
+sub _set_alarm {
     my $self = shift;
 
-    my $item = $self->{timeouts}->find_min();
+    my $now = $self->{time}();
 
-    return if !$item;
-
-    my $timeout = $item->[0] - time();
-
-    if ( $timeout <= 0 ) {
-        $timeout = 0;
+    my $is_overdue;
+    while ($@{ $self->{deadlines} } && $self->{deadlines}[0] <= $now ) {
+        $is_overdue = shift @{ $self->{deadlines} };
+    }
+    if ( $is_overdue ) {
         kill 'ALRM', $$;
     }
 
-    alarm $timeout;
+    my $deadline = $self->{deadlines}[0];
+
+    if (defined $deadline) {
+        my $new_timeout = $deadline - $now;
+        my $old_timeout = alarm $new_timeout;
+        if ( $old_timeout ) {
+            $self->insert( $now + $old_timeout );
+        }
+    }
 
     return;
 }

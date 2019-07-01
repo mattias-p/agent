@@ -28,7 +28,7 @@ sub load {
 
     $self->{data} = {
         timeout     => 10,
-        max_workers => 2,
+        max_workers => 1,
     };
 
     return 1;

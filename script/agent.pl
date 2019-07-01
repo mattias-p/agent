@@ -31,7 +31,7 @@ sub work {
     return;
 }
 
-my $config = App::Config->new( p_fail => 0.2 );
+my $config = App::Config->new( p_fail => 0.1 );
 
 if ( !$config->load() ) {
     say STDERR "Failed to load config";
@@ -43,14 +43,14 @@ my $alarms = Unix::AlarmQueue->new();
 my $dispatcher = Unix::Dispatcher->new(
     config => $config,
     action => \&work,
-    p_fail => 0.2,
+    p_fail => 0.0,
 );
 
 my $initial_state = $S_LOAD;
 
 my $idler = Unix::Idler->new();
 
-my $allocator = App::Allocator->new( p_fail => 0.1 );
+my $allocator = App::Allocator->new( p_fail => 0.2 );
 
 my $agent = App::Agent->new(
     initial_state => $initial_state,

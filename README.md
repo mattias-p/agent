@@ -82,8 +82,6 @@ TBD
 
 ## Known problems
 
-The current solution for what workers to kill over timeouts does not work well.
-
 Any job id must not be allocated more than once you you'll end up with a race
 condition with the current design.
 Instead units of work should be numbered separately from jobs.

@@ -35,7 +35,7 @@ sub new {
 sub jobs {
     my $self = shift;
 
-    return values %{ $self->{jobs} };
+    return map { $_->[0] } values %{ $self->{jobs} };
 }
 
 sub can_spawn_worker {
@@ -54,6 +54,7 @@ sub spawn {
         return;
     }
 
+    my $now = time();
     my $pid = fork;
     if ( !defined $pid ) {
         return;
@@ -63,7 +64,8 @@ sub spawn {
         $finish->();
         exit 0;
     }
-    $self->{jobs}{$pid} = $jid;
+    my $deadline = $now + $self->{config}->timeout();
+    $self->{jobs}{$pid} = [ $jid, $deadline ];
 
     return $pid;
 }
@@ -77,7 +79,8 @@ sub _reap {
     for my $pid ( keys %{ $self->{jobs} } ) {
         my $status = waitpid( $pid, $flags );
         if ( $status != 0 ) {
-            my $jid = delete $self->{jobs}{$pid};
+            my $job = delete $self->{jobs}{$pid};
+            my $jid = $job->[0];
             my $severity = $self->termination_severity( ${^CHILD_ERROR_NATIVE} );
             $reaped{$pid} = [ $jid, $severity, ${^CHILD_ERROR_NATIVE} ];
         }
@@ -95,15 +98,31 @@ sub kill {
     my $self = shift;
     my $pid  = shift;
 
-    my $jid = $self->{jobs}{$pid};
+    my $jid = $self->{jobs}{$pid}[0];
 
     if ( $jid ) {
-        kill 'KILL', $pid;
+        CORE::kill 'KILL', $pid;
         return $jid;
     }
     else {
         return;
     }
+}
+
+sub kill_overdue {
+    my $self = shift;
+
+    my $now = time();
+
+    my %jobs;
+    for my $pid ( keys %{ $self->{jobs} } ) {
+        if ( $self->{jobs}{$pid}[1] >= $now ) {
+            CORE::kill 'KILL', $pid;
+            $jobs{$pid} = $self->{jobs}{$pid}[0];
+        }
+    }
+
+    return %jobs;
 }
 
 sub shutdown {

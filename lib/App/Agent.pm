@@ -236,7 +236,7 @@ sub do_load {
 sub do_run {
     my $self = shift;
 
-    if ( !$self->{dispatcher}->can_dispatch_worker ) {
+    if ( !$self->{dispatcher}->can_spawn_worker ) {
         $log->warn("cannot spawn worker");
         return $I_DONE;
     }
@@ -258,7 +258,7 @@ sub do_run {
     }
 
     $log->infof( "job(%s) allocated, worker(%s) spawned", $jid, $pid );
-    $self->{alarms}->insert( $self->{config}->timeout(), $pid );
+    $self->{alarms}->add_timeout( $self->{config}->timeout() );
 
     return;
 }
@@ -286,14 +286,17 @@ sub do_idle {
 
 sub do_timeout {
     my $self = shift;
-    my $pid = $self->{alarms}->extract_earliest();
-    if ( $pid ) {
-        my $jid = $self->{dispatcher}->kill( $pid );
-        if ( $jid ) {
-            $log->infof( "worker(%s) killed, releasing job(%s)", $pid, $jid );
-            $self->{allocator}->release( $jid );
-        }
+
+    $self->{alarms}->next_timeout();
+
+    my %jobs = $self->{dispatcher}->kill_overdue();
+
+    for my $pid ( keys %jobs ) {
+        my $jid = $jobs{$pid};
+        $log->infof( "overdue worker(%s) killed, releasing job(%s)", $pid, $jid );
+        $self->{allocator}->release( $jid );
     }
+
     return;
 }
 
