@@ -26,7 +26,10 @@ sub load {
         return;
     }
 
-    $self->{data} = 1;
+    $self->{data} = {
+        timeout     => 10,
+        max_workers => 2,
+    };
 
     return 1;
 }
@@ -34,11 +37,19 @@ sub load {
 sub is_loaded {
     my $self = shift;
 
-    return !!$self->{data};
+    return exists $self->{data};
 }
 
 sub timeout {
-    return 10;
+    my $self = shift;
+
+    return $self->{data}{timeout};
+}
+
+sub max_workers {
+    my $self = shift;
+
+    return $self->{data}{max_workers};
 }
 
 1;

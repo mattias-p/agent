@@ -5,7 +5,7 @@ use feature 'say';
 
 use App::Allocator;
 use App::Config;
-use App::Agent qw( cmp_inputs $I_ALRM $I_CHLD $I_HUP $I_POKE $I_TERM $I_USR2 $S_LOAD );
+use App::Agent qw( cmp_inputs $I_ALRM $I_CHLD $I_HUP $I_STEP $I_TERM $I_USR2 $S_LOAD );
 use Cwd;
 use File::Spec;
 use Heap::Binary;
@@ -41,6 +41,7 @@ if ( !$config->load() ) {
 my $alarms = Unix::AlarmQueue->new();
 
 my $dispatcher = Unix::Dispatcher->new(
+    config => $config,
     action => \&work,
     p_fail => 0.2,
 );
@@ -49,7 +50,7 @@ my $initial_state = $S_LOAD;
 
 my $idler = Unix::Idler->new();
 
-my $allocator = App::Allocator->new( p_fail => 0.2 );
+my $allocator = App::Allocator->new( p_fail => 0.1 );
 
 my $agent = App::Agent->new(
     initial_state => $initial_state,
@@ -93,7 +94,7 @@ install_handler( 'TERM' );
 install_handler( 'USR2' );
 
 while ( !$agent->is_final ) {
-    my @events = $agent->process( $events->extract_min() // $I_POKE );
+    my @events = $agent->process( $events->extract_min() // $I_STEP );
 
     $events->insert($_) for @events;
     $events->insert($I_ALRM) if retrieve_caught('ALRM');

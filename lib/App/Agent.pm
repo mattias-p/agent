@@ -10,7 +10,7 @@ use Readonly;
 
 use base 'FSM';
 
-our @EXPORT_OK = qw( cmp_inputs $S_LOAD $S_RUN $S_REAP $S_TIMEOUT $S_IDLE $S_GRACE_REAP $S_GRACE_TIMEOUT $S_GRACE_IDLE $S_SHUTDOWN $S_FINAL $I_POKE $I_DONE $I_CHLD $I_USR2 $I_ALRM $I_HUP $I_TERM $I_EXIT );
+our @EXPORT_OK = qw( cmp_inputs $S_LOAD $S_RUN $S_REAP $S_TIMEOUT $S_IDLE $S_GRACE_REAP $S_GRACE_TIMEOUT $S_GRACE_IDLE $S_SHUTDOWN $S_FINAL $I_STEP $I_DONE $I_CHLD $I_USR2 $I_ALRM $I_HUP $I_TERM $I_EXIT );
 
 Readonly our $S_LOAD          => 'LOAD';
 Readonly our $S_RUN           => 'RUN';
@@ -43,7 +43,7 @@ Readonly our $I_CHLD => 'CHLD';
 Readonly our $I_HUP  => 'HUP';
 Readonly our $I_ALRM => 'ALRM';
 Readonly our $I_USR2 => 'USR2';
-Readonly our $I_POKE => 'POKE';
+Readonly our $I_STEP => 'STEP';
 
 Readonly our %INPUT_PRIORITIES => (
     $I_EXIT => 0,
@@ -53,21 +53,21 @@ Readonly our %INPUT_PRIORITIES => (
     $I_ALRM => 4,
     $I_HUP  => 5,
     $I_USR2 => 6,
-    $I_POKE => 7,
+    $I_STEP => 7,
 );
 
 Readonly my $BUILDER => FSM::Builder->new();
 
 $BUILDER->define_input(
-    $I_POKE => (
-        $S_LOAD          => $S_RUN,
+    $I_STEP => (
         $S_RUN           => $S_RUN,
+        $S_IDLE          => $S_RUN,
+        $S_LOAD          => $S_RUN,
+        $S_REAP          => $S_RUN,
         $S_TIMEOUT       => $S_RUN,
-        $S_IDLE          => $S_IDLE,
-        $S_REAP          => $S_IDLE,
-        $S_GRACE_TIMEOUT => $S_GRACE_IDLE,
         $S_GRACE_IDLE    => $S_GRACE_IDLE,
         $S_GRACE_REAP    => $S_GRACE_IDLE,
+        $S_GRACE_TIMEOUT => $S_GRACE_IDLE,
         $S_SHUTDOWN      => $S_SHUTDOWN,
         $S_FINAL         => $S_FINAL,
     )
@@ -75,14 +75,14 @@ $BUILDER->define_input(
 
 $BUILDER->define_input(
     $I_DONE => (
-        $S_LOAD          => $S_RUN,
         $S_RUN           => $S_IDLE,
+        $S_IDLE          => $S_RUN,
+        $S_LOAD          => $S_RUN,
+        $S_REAP          => $S_RUN,
         $S_TIMEOUT       => $S_RUN,
-        $S_IDLE          => $S_IDLE,
-        $S_REAP          => $S_IDLE,
-        $S_GRACE_TIMEOUT => $S_FINAL,
         $S_GRACE_IDLE    => $S_FINAL,
         $S_GRACE_REAP    => $S_FINAL,
+        $S_GRACE_TIMEOUT => $S_FINAL,
         $S_SHUTDOWN      => $S_FINAL,
         $S_FINAL         => $S_FINAL,
     )
@@ -90,14 +90,14 @@ $BUILDER->define_input(
 
 $BUILDER->define_input(
     $I_CHLD => (
-        $S_LOAD          => $S_REAP,
         $S_RUN           => $S_REAP,
-        $S_TIMEOUT       => $S_REAP,
         $S_IDLE          => $S_REAP,
+        $S_LOAD          => $S_REAP,
         $S_REAP          => $S_REAP,
-        $S_GRACE_TIMEOUT => $S_GRACE_REAP,
+        $S_TIMEOUT       => $S_REAP,
         $S_GRACE_IDLE    => $S_GRACE_REAP,
         $S_GRACE_REAP    => $S_GRACE_REAP,
+        $S_GRACE_TIMEOUT => $S_GRACE_REAP,
         $S_SHUTDOWN      => $S_SHUTDOWN,
         $S_FINAL         => $S_FINAL,
     )
@@ -105,14 +105,14 @@ $BUILDER->define_input(
 
 $BUILDER->define_input(
     $I_ALRM => (
-        $S_LOAD          => $S_TIMEOUT,
         $S_RUN           => $S_TIMEOUT,
-        $S_TIMEOUT       => $S_TIMEOUT,
         $S_IDLE          => $S_TIMEOUT,
+        $S_LOAD          => $S_TIMEOUT,
         $S_REAP          => $S_TIMEOUT,
-        $S_GRACE_TIMEOUT => $S_GRACE_TIMEOUT,
+        $S_TIMEOUT       => $S_TIMEOUT,
         $S_GRACE_IDLE    => $S_GRACE_TIMEOUT,
         $S_GRACE_REAP    => $S_GRACE_TIMEOUT,
+        $S_GRACE_TIMEOUT => $S_GRACE_TIMEOUT,
         $S_SHUTDOWN      => $S_SHUTDOWN,
         $S_FINAL         => $S_FINAL,
     )
@@ -120,14 +120,14 @@ $BUILDER->define_input(
 
 $BUILDER->define_input(
     $I_USR2 => (
-        $S_LOAD          => $S_RUN,
         $S_RUN           => $S_RUN,
-        $S_TIMEOUT       => $S_RUN,
         $S_IDLE          => $S_RUN,
+        $S_LOAD          => $S_RUN,
         $S_REAP          => $S_RUN,
-        $S_GRACE_TIMEOUT => $S_GRACE_IDLE,
+        $S_TIMEOUT       => $S_RUN,
         $S_GRACE_IDLE    => $S_GRACE_IDLE,
         $S_GRACE_REAP    => $S_GRACE_IDLE,
+        $S_GRACE_TIMEOUT => $S_GRACE_IDLE,
         $S_SHUTDOWN      => $S_SHUTDOWN,
         $S_FINAL         => $S_FINAL,
     )
@@ -135,14 +135,14 @@ $BUILDER->define_input(
 
 $BUILDER->define_input(
     $I_HUP => (
-        $S_LOAD          => $S_LOAD,
         $S_RUN           => $S_LOAD,
-        $S_TIMEOUT       => $S_LOAD,
         $S_IDLE          => $S_LOAD,
+        $S_LOAD          => $S_LOAD,
         $S_REAP          => $S_LOAD,
-        $S_GRACE_TIMEOUT => $S_GRACE_IDLE,
+        $S_TIMEOUT       => $S_LOAD,
         $S_GRACE_IDLE    => $S_GRACE_IDLE,
         $S_GRACE_REAP    => $S_GRACE_IDLE,
+        $S_GRACE_TIMEOUT => $S_GRACE_IDLE,
         $S_SHUTDOWN      => $S_SHUTDOWN,
         $S_FINAL         => $S_FINAL,
     )
@@ -150,14 +150,14 @@ $BUILDER->define_input(
 
 $BUILDER->define_input(
     $I_TERM => (
-        $S_LOAD          => $S_GRACE_IDLE,
         $S_RUN           => $S_GRACE_IDLE,
-        $S_TIMEOUT       => $S_GRACE_IDLE,
         $S_IDLE          => $S_GRACE_IDLE,
+        $S_LOAD          => $S_GRACE_IDLE,
         $S_REAP          => $S_GRACE_IDLE,
-        $S_GRACE_TIMEOUT => $S_SHUTDOWN,
+        $S_TIMEOUT       => $S_GRACE_IDLE,
         $S_GRACE_IDLE    => $S_SHUTDOWN,
         $S_GRACE_REAP    => $S_SHUTDOWN,
+        $S_GRACE_TIMEOUT => $S_SHUTDOWN,
         $S_SHUTDOWN      => $S_FINAL,
         $S_FINAL         => $S_FINAL,
     )
@@ -165,14 +165,14 @@ $BUILDER->define_input(
 
 $BUILDER->define_input(
     $I_EXIT => (
-        $S_LOAD          => $S_SHUTDOWN,
         $S_RUN,          => $S_SHUTDOWN,
-        $S_TIMEOUT       => $S_SHUTDOWN,
         $S_IDLE,         => $S_SHUTDOWN,
+        $S_LOAD          => $S_SHUTDOWN,
         $S_REAP,         => $S_SHUTDOWN,
-        $S_GRACE_TIMEOUT => $S_SHUTDOWN,
+        $S_TIMEOUT       => $S_SHUTDOWN,
         $S_GRACE_IDLE    => $S_SHUTDOWN,
         $S_GRACE_REAP    => $S_SHUTDOWN,
+        $S_GRACE_TIMEOUT => $S_SHUTDOWN,
         $S_SHUTDOWN      => $S_FINAL,
         $S_FINAL         => $S_FINAL,
     )
@@ -236,21 +236,29 @@ sub do_load {
 sub do_run {
     my $self = shift;
 
-    my $jid = $self->{allocator}->claim();
-    return $I_DONE if !defined $jid;
+    if ( !$self->{dispatcher}->can_dispatch_worker ) {
+        $log->warn("cannot spawn worker");
+        return $I_DONE;
+    }
 
-    my $pid = $self->{dispatcher}->dispatch( $jid, sub {
+    my $jid = $self->{allocator}->claim();
+    if ( !$jid ) {
+        $log->infof( "no jobs" );
+        return $I_DONE;
+    }
+
+    my $pid = $self->{dispatcher}->spawn( $jid, sub {
         $log->infof( "job(%s) completed, releasing it", $jid );
         $self->{allocator}->release( $jid );
     });
-    if ( $pid ) {
-        $log->infof( "job(%s) allocated, worker(%s) spawned", $jid, $pid );
-        $self->{alarms}->insert( $self->{config}->timeout(), $pid );
-    }
-    else {
-        $log->infof( "job(%s) dispatch failed, releasing it", $jid );
+    if ( !$pid ) {
+        $log->infof( "job(%s) spawning worker failed, releasing job", $jid );
         $self->{allocator}->release( $jid );
+        return $I_DONE;
     }
+
+    $log->infof( "job(%s) allocated, worker(%s) spawned", $jid, $pid );
+    $self->{alarms}->insert( $self->{config}->timeout(), $pid );
 
     return;
 }

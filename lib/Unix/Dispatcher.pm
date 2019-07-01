@@ -14,6 +14,7 @@ Readonly my @SIG_NAMES => ( split ' ', $Config{sig_name} );
 sub new {
     my ( $class, %args ) = @_;
 
+    my $config = delete $args{config};
     my $action = delete $args{action};
     my $p_fail = delete $args{p_fail};
 
@@ -26,6 +27,7 @@ sub new {
     $self->{jobs}   = {};
     $self->{action} = $action;
     $self->{p_fail} = $p_fail;
+    $self->{config} = $config;
 
     return $self;
 }
@@ -36,7 +38,13 @@ sub jobs {
     return values %{ $self->{jobs} };
 }
 
-sub dispatch {
+sub can_spawn_worker {
+    my $self = shift;
+
+    return scalar keys %{ $self->{jobs} } < $self->{config}->max_workers;
+}
+
+sub spawn {
     my $self   = shift;
     my $jid    = shift;
     my $finish = shift;
