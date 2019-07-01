@@ -18,20 +18,19 @@ just dummies.
 Consequently the jobs performed by the workers are also just make-believe - they
 simply sleep for a random number of seconds.
 
-The agent has a number of high-level states: initialization, active, graceful
-shutdown, hard shutdown and a final state.
+The agent has a number of phases: initialization, active, graceful shutdown,
+hard shutdown and a final phase.
 
-### The Initialization state
+### The Initialization phase
 
-In the initialization high-level state the agent loads its configuration file,
-starts logging and daemonizes itself.
+In the initialization phase the agent loads its configuration file, starts
+logging and daemonizes itself.
 If any of these fail the agent prints an error message and terminates.
-Otherwise it enters the active high-level state.
+Otherwise it enters the active phase.
 
-### The Active state
+### The Active phase
 
-In the active high-level state the agent allocates jobs and spawns workers for
-them.
+In the active phase the agent allocates jobs and spawns workers for them.
 If there are no more jobs to be allocated, the agent goes to sleep waiting for
 signals.
 For every worker it spawned it also initialtes a timeout that will result in a
@@ -44,7 +43,7 @@ On SIGHUP the agent wakes up and reloads its configuration file.
 If the file cannot be loaded or if it is invalid, the agent keeps its old
 configuration.
 On SIGUSR2 the agent wakes up and looks for more work as described above.
-On SIGTERM the agent enters the graceful shutdown high-level state.
+On SIGTERM the agent enters the graceful shutdown phase.
 
 For resource management reasons, the agent prioritizes handling new signals over
 spawning more workers.
@@ -53,29 +52,29 @@ it was in the middle of spawning workers.
 To be on the safe, it follows up on SIGALRM, SIGCHLD and SIGHUP with checking
 for more work as described above.
 
-### The Graceful Shutdown state
+### The Graceful Shutdown phase
 
-In the graceful shutdown high-level state the agent allows active workers to
-complete their work but doesn't spawn any new ones.
+In the graceful shutdown phase the agent allows active workers to complete their
+work but doesn't spawn any new ones.
 
-In essence the agent operates just like in the active state, but with the
+In essence the agent operates just like in the active phase, but with the
 following exceptions:
 
 1. The agent won't look for more work and consequently it doesn't spawn any new
    workers.
 2. The agent won't try to reload its configuration file.
-3. As soon as there are no active workers the agent enters the final state.
-4. On SIGTERM the agent enters the hard shutdown state.
+3. As soon as there are no active workers the agent enters the final phase.
+4. On SIGTERM the agent enters the hard shutdown phase.
 
-### The Hard Shutdown state
+### The Hard Shutdown phase
 
-In the hard shutdown high-level state the agent immediately send SIGKILL to all
-of its active workers, reaps them and releases their associated jobs, and enters
-the final state.
+In the hard shutdown phase the agent immediately send SIGKILL to all of its
+active workers, reaps them and releases their associated jobs, and enters the
+final phase.
 
-### The final state
+### The final phase
 
-In the final state the agent terminates with exit status 0;
+In the final phase the agent simply terminates with exit status 0;
 
 ## Design
 
