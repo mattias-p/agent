@@ -79,6 +79,8 @@ elsif ( !defined $pid ) {
 }
 
 Log::Any::Adapter->set( 'File', $log_file );    # reopen after daemonization
+$log->noticef( "***************************", $$ );
+$log->noticef( "Started daemon (pid %s)", $$ );
 
 install_handler( 'ALRM' );
 install_handler( 'CHLD' );
