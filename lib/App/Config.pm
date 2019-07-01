@@ -26,6 +26,8 @@ sub load {
         return;
     }
 
+    $self->{data} = 1;
+
     return 1;
 }
 
