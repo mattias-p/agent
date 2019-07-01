@@ -10,7 +10,7 @@ use Readonly;
 
 use base 'FSM';
 
-our @EXPORT_OK = qw( cmp_inputs $S_LOAD $S_RUN $S_REAP $S_TIMEOUT $S_IDLE $S_GRACE_REAP $S_GRACE_TIMEOUT $S_GRACE_IDLE $S_SHUTDOWN $S_EXIT $I_IDLE $I_DONE $I_REAP $I_WORK $I_TIMEOUT $I_LOAD $I_TERM $I_EXIT );
+our @EXPORT_OK = qw( cmp_inputs $S_LOAD $S_RUN $S_REAP $S_TIMEOUT $S_IDLE $S_GRACE_REAP $S_GRACE_TIMEOUT $S_GRACE_IDLE $S_SHUTDOWN $S_FINAL $I_POKE $I_DONE $I_CHLD $I_USR2 $I_ALRM $I_HUP $I_TERM $I_EXIT );
 
 Readonly our $S_LOAD          => 'LOAD';
 Readonly our $S_RUN           => 'RUN';
@@ -21,7 +21,7 @@ Readonly our $S_GRACE_IDLE    => 'GRACE_IDLE';
 Readonly our $S_GRACE_REAP    => 'GRACE_REAP';
 Readonly our $S_GRACE_TIMEOUT => 'GRACE_TIMEOUT';
 Readonly our $S_SHUTDOWN      => 'SHUTDOWN';
-Readonly our $S_EXIT          => 'EXIT';
+Readonly our $S_FINAL         => 'EXIT';
 
 Readonly my %ENTRY_ACTIONS => (
     $S_LOAD          => \&do_load,
@@ -33,33 +33,33 @@ Readonly my %ENTRY_ACTIONS => (
     $S_GRACE_TIMEOUT => \&do_timeout,
     $S_GRACE_IDLE    => \&do_grace_idle,
     $S_SHUTDOWN      => \&do_shutdown,
-    $S_EXIT          => \&do_exit,
+    $S_FINAL         => \&do_final,
 );
 
-Readonly our $I_EXIT    => 'exit';
-Readonly our $I_DONE    => 'done';
-Readonly our $I_TERM    => 'term';
-Readonly our $I_REAP    => 'reap';
-Readonly our $I_LOAD    => 'load';
-Readonly our $I_TIMEOUT => 'timeout';
-Readonly our $I_WORK    => 'work';
-Readonly our $I_IDLE    => 'idle';
+Readonly our $I_EXIT => 'EXIT';
+Readonly our $I_DONE => 'DONE';
+Readonly our $I_TERM => 'TERM';
+Readonly our $I_CHLD => 'CHLD';
+Readonly our $I_HUP  => 'HUP';
+Readonly our $I_ALRM => 'ALRM';
+Readonly our $I_USR2 => 'USR2';
+Readonly our $I_POKE => 'POKE';
 
 Readonly our %INPUT_PRIORITIES => (
-    $I_EXIT    => 0,
-    $I_DONE    => 1,
-    $I_TERM    => 2,
-    $I_REAP    => 3,
-    $I_LOAD    => 4,
-    $I_TIMEOUT => 5,
-    $I_WORK    => 6,
-    $I_IDLE    => 7,
+    $I_EXIT => 0,
+    $I_DONE => 1,
+    $I_TERM => 2,
+    $I_CHLD => 3,
+    $I_ALRM => 4,
+    $I_HUP  => 5,
+    $I_USR2 => 6,
+    $I_POKE => 7,
 );
 
 Readonly my $BUILDER => FSM::Builder->new();
 
 $BUILDER->define_input(
-    $I_IDLE => (
+    $I_POKE => (
         $S_LOAD          => $S_RUN,
         $S_RUN           => $S_RUN,
         $S_TIMEOUT       => $S_RUN,
@@ -69,7 +69,7 @@ $BUILDER->define_input(
         $S_GRACE_IDLE    => $S_GRACE_IDLE,
         $S_GRACE_REAP    => $S_GRACE_IDLE,
         $S_SHUTDOWN      => $S_SHUTDOWN,
-        $S_EXIT          => $S_EXIT,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
@@ -80,16 +80,16 @@ $BUILDER->define_input(
         $S_TIMEOUT       => $S_RUN,
         $S_IDLE          => $S_IDLE,
         $S_REAP          => $S_IDLE,
-        $S_GRACE_TIMEOUT => $S_EXIT,
-        $S_GRACE_IDLE    => $S_EXIT,
-        $S_GRACE_REAP    => $S_EXIT,
-        $S_SHUTDOWN      => $S_EXIT,
-        $S_EXIT          => $S_EXIT,
+        $S_GRACE_TIMEOUT => $S_FINAL,
+        $S_GRACE_IDLE    => $S_FINAL,
+        $S_GRACE_REAP    => $S_FINAL,
+        $S_SHUTDOWN      => $S_FINAL,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
 $BUILDER->define_input(
-    $I_REAP => (
+    $I_CHLD => (
         $S_LOAD          => $S_REAP,
         $S_RUN           => $S_REAP,
         $S_TIMEOUT       => $S_REAP,
@@ -99,12 +99,12 @@ $BUILDER->define_input(
         $S_GRACE_IDLE    => $S_GRACE_REAP,
         $S_GRACE_REAP    => $S_GRACE_REAP,
         $S_SHUTDOWN      => $S_SHUTDOWN,
-        $S_EXIT          => $S_EXIT,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
 $BUILDER->define_input(
-    $I_TIMEOUT => (
+    $I_ALRM => (
         $S_LOAD          => $S_TIMEOUT,
         $S_RUN           => $S_TIMEOUT,
         $S_TIMEOUT       => $S_TIMEOUT,
@@ -114,12 +114,12 @@ $BUILDER->define_input(
         $S_GRACE_IDLE    => $S_GRACE_TIMEOUT,
         $S_GRACE_REAP    => $S_GRACE_TIMEOUT,
         $S_SHUTDOWN      => $S_SHUTDOWN,
-        $S_EXIT          => $S_EXIT,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
 $BUILDER->define_input(
-    $I_WORK => (
+    $I_USR2 => (
         $S_LOAD          => $S_RUN,
         $S_RUN           => $S_RUN,
         $S_TIMEOUT       => $S_RUN,
@@ -129,12 +129,12 @@ $BUILDER->define_input(
         $S_GRACE_IDLE    => $S_GRACE_IDLE,
         $S_GRACE_REAP    => $S_GRACE_IDLE,
         $S_SHUTDOWN      => $S_SHUTDOWN,
-        $S_EXIT          => $S_EXIT,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
 $BUILDER->define_input(
-    $I_LOAD => (
+    $I_HUP => (
         $S_LOAD          => $S_LOAD,
         $S_RUN           => $S_LOAD,
         $S_TIMEOUT       => $S_LOAD,
@@ -144,7 +144,7 @@ $BUILDER->define_input(
         $S_GRACE_IDLE    => $S_GRACE_IDLE,
         $S_GRACE_REAP    => $S_GRACE_IDLE,
         $S_SHUTDOWN      => $S_SHUTDOWN,
-        $S_EXIT          => $S_EXIT,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
@@ -158,8 +158,8 @@ $BUILDER->define_input(
         $S_GRACE_TIMEOUT => $S_SHUTDOWN,
         $S_GRACE_IDLE    => $S_SHUTDOWN,
         $S_GRACE_REAP    => $S_SHUTDOWN,
-        $S_SHUTDOWN      => $S_EXIT,
-        $S_EXIT          => $S_EXIT,
+        $S_SHUTDOWN      => $S_FINAL,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
@@ -173,8 +173,8 @@ $BUILDER->define_input(
         $S_GRACE_TIMEOUT => $S_SHUTDOWN,
         $S_GRACE_IDLE    => $S_SHUTDOWN,
         $S_GRACE_REAP    => $S_SHUTDOWN,
-        $S_SHUTDOWN      => $S_EXIT,
-        $S_EXIT          => $S_EXIT,
+        $S_SHUTDOWN      => $S_FINAL,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
@@ -190,17 +190,18 @@ sub cmp_inputs {
 sub new {
     my ( $class, %args ) = @_;
     my $config     = delete $args{config};
-    my $allocator  = delete $args{allocator};
-    my $dispatcher = delete $args{dispatcher};
-    my $alarms     = delete $args{alarms};
-    my $idler      = delete $args{idler};
+    my $allocator     = delete $args{allocator};
+    my $dispatcher    = delete $args{dispatcher};
+    my $alarms        = delete $args{alarms};
+    my $idler         = delete $args{idler};
+    my $initial_state = delete $args{initial_state};
     !%args or confess 'unrecognized arguments';
 
     my $self;
     $self = $BUILDER->build(
         class           => $class,
-        initial_state   => $S_LOAD,
-        final_states    => [ $S_EXIT ],
+        initial_state   => $initial_state,
+        final_states    => [ $S_FINAL ],
         output_function => sub {
             my $state = shift;
             my $input = shift;
@@ -317,7 +318,7 @@ sub do_shutdown {
     return $I_DONE;
 }
 
-sub do_exit {
+sub do_final {
     return;
 }
 

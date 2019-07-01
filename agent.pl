@@ -5,7 +5,7 @@ use feature 'say';
 
 use App::Allocator;
 use App::Config;
-use App::Agent qw( cmp_inputs $I_IDLE $I_REAP $I_TIMEOUT $I_WORK $I_LOAD $I_TERM );
+use App::Agent qw( cmp_inputs $I_ALRM $I_CHLD $I_HUP $I_POKE $I_TERM $I_USR2 $S_LOAD );
 use Cwd;
 use File::Spec;
 use Heap::Binary;
@@ -50,11 +50,12 @@ my $idler = Unix::Idler->new();
 my $allocator = App::Allocator->new( p_fail => 0.2 );
 
 my $agent = App::Agent->new(
-    alarms     => $alarms,
-    allocator  => $allocator,
-    config     => $config,
-    dispatcher => $dispatcher,
-    idler      => $idler,
+    initial_state => $S_LOAD,
+    alarms        => $alarms,
+    allocator     => $allocator,
+    config        => $config,
+    dispatcher    => $dispatcher,
+    idler         => $idler,
 );
 
 my $events = Heap::Binary->new( \&cmp_inputs );
@@ -86,17 +87,17 @@ install_handler( 'ALRM' );
 install_handler( 'CHLD' );
 install_handler( 'HUP' );
 install_handler( 'TERM' );
-install_handler( 'USR1' );
+install_handler( 'USR2' );
 
 while ( !$agent->is_final ) {
-    my @events = $agent->process( $events->extract_min() // $I_IDLE );
+    my @events = $agent->process( $events->extract_min() // $I_POKE );
 
     $events->insert($_) for @events;
-    $events->insert($I_TIMEOUT) if retrieve_caught('ALRM');
-    $events->insert($I_REAP)    if retrieve_caught('CHLD');
-    $events->insert($I_LOAD)    if retrieve_caught('HUP');
-    $events->insert($I_TERM)    if retrieve_caught('TERM');
-    $events->insert($I_WORK)    if retrieve_caught('USR1');
+    $events->insert($I_ALRM) if retrieve_caught('ALRM');
+    $events->insert($I_CHLD) if retrieve_caught('CHLD');
+    $events->insert($I_HUP)  if retrieve_caught('HUP');
+    $events->insert($I_TERM) if retrieve_caught('TERM');
+    $events->insert($I_USR2) if retrieve_caught('USR2');
 }
 
 exit 0;
