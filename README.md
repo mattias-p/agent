@@ -78,5 +78,19 @@ In the final phase the agent simply terminates with exit status 0;
 
 ## Design
 
+TBD
+
+## Known problems
+
+There's no limit to how many workers are alive at any given time.
+
+The current solution for what workers to kill over timeouts does not work well.
+
+Any job id must not be allocated more than once you you'll end up with a race
+condition with the current design.
+Instead units of work should be numbered separately from jobs.
+Most of the time the unit ids are probably at least as interesting as job ids so
+they should be included in the log.
+
 
 [Clean Architecture]: https://www.goodreads.com/book/show/18043011-clean-architecture
