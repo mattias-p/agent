@@ -223,11 +223,11 @@ sub do_load {
     my $self = shift;
 
     if ( $self->{config}->load() ) {
-        $log->info("Successfully loaded config");
+        $log->info("config loaded");
         return $I_DONE;
     }
     else {
-        $log->warn("Failed to load config");
+        $log->warn("config loading failed, keeping old config");
         return ( $self->{config}->is_loaded() ) ? () : $I_EXIT;
     }
 }
@@ -239,15 +239,15 @@ sub do_run {
     return $I_DONE if !defined $jid;
 
     my $pid = $self->{dispatcher}->dispatch( $jid, sub {
-        $log->infof( "Releasing job %s after completion", $jid );
+        $log->infof( "job(%s) completed, releasing it", $jid );
         $self->{allocator}->release( $jid );
     });
     if ( $pid ) {
-        $log->infof( "Dispatched job %s to process %s", $jid, $pid );
+        $log->infof( "job(%s) allocated, worker(%s) spawned", $jid, $pid );
         $self->{alarms}->insert( $self->{config}->timeout(), $pid );
     }
     else {
-        $log->infof( "Failed to dispatch job %s, releasing it again", $jid );
+        $log->infof( "job(%s) dispatch failed, releasing it", $jid );
         $self->{allocator}->release( $jid );
     }
 
@@ -258,9 +258,13 @@ sub do_reap {
     my $self = shift;
     my %jobs = $self->{dispatcher}->reap();
     for my $pid ( keys %jobs ) {
-        my ( $jid, $status ) = @{ $jobs{$pid} };
-        $log->infof( "Reaped pid %s (status %s), releasing job %s",
-            $pid, $status, $jid );
+        my ( $jid, $severity, $details ) = @{ $jobs{$pid} };
+        $log->infof( "jid %s severity %s details %s", $jid, $severity, $details );
+        my $is_severity = "is_$severity";
+        if ( $log->$is_severity() ) {
+            my $reason = $self->{dispatcher}->termination_reason($details);
+            $log->$severity( "worker($pid) $reason, releasing job($jid)" );
+        }
         $self->{allocator}->release( $jid );
     }
     return;
@@ -278,7 +282,7 @@ sub do_timeout {
     if ( $pid ) {
         my $jid = $self->{dispatcher}->kill( $pid );
         if ( $jid ) {
-            $log->infof( "Killed pid %s, releasing job %s", $pid, $jid );
+            $log->infof( "worker(%s) killed, releasing job(%s)", $pid, $jid );
             $self->{allocator}->release( $jid );
         }
     }
@@ -298,12 +302,16 @@ sub do_grace_idle {
 
 sub do_shutdown {
     my $self = shift;
+
     my %jobs = $self->{dispatcher}->shutdown();
 
     for my $pid ( keys %jobs ) {
-        my ( $jid, $status ) = @{ $jobs{$pid} };
-        $log->info( "Reaped pid %s (status %s), releasing job %s",
-            $pid, $status, $jid );
+        my ( $jid, $severity, $details ) = @{ $jobs{$pid} };
+        my $is_severity = "is_$severity";
+        if ( $log->$is_severity() ) {
+            my $reason = $self->{dispatcher}->termination_reason($details);
+            $log->$severity( "worker($pid) $reason, releasing job($jid)" );
+        }
         $self->{allocator}->release( $jid );
     }
     return $I_DONE;
