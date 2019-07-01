@@ -260,7 +260,6 @@ sub do_reap {
     my %jobs = $self->{dispatcher}->reap();
     for my $pid ( keys %jobs ) {
         my ( $jid, $severity, $details ) = @{ $jobs{$pid} };
-        $log->infof( "jid %s severity %s details %s", $jid, $severity, $details );
         my $is_severity = "is_$severity";
         if ( $log->$is_severity() ) {
             my $reason = $self->{dispatcher}->termination_reason($details);
