@@ -1,11 +1,11 @@
 package App::Agent;
 use strict;
 use warnings;
-use feature 'say';
 
 use Carp qw( confess );
 use Exporter qw( import );
 use FSM::Builder;
+use Log::Any qw( $log );
 use Readonly;
 
 use base 'FSM';
@@ -60,8 +60,8 @@ Readonly my $BUILDER => FSM::Builder->new();
 
 $BUILDER->define_input(
     $I_IDLE => (
-        $S_LOAD          => $S_RUN,
-        $S_RUN           => $S_RUN,
+        $S_LOAD          => $S_IDLE,
+        $S_RUN           => $S_IDLE,
         $S_TIMEOUT       => $S_IDLE,
         $S_IDLE          => $S_IDLE,
         $S_REAP          => $S_IDLE,
@@ -205,7 +205,7 @@ sub new {
             my $state = shift;
             my $input = shift;
 
-            say "Input($input) -> State($state)";
+            $log->infof( "Input(%s) -> State(%s)", $input, $state );
 
             return $ENTRY_ACTIONS{$state}->( $self );
         },
@@ -223,11 +223,11 @@ sub do_load {
     my $self = shift;
 
     if ( $self->{config}->load() ) {
-        say "Successfully loaded config";
+        $log->info("Successfully loaded config");
         return $I_DONE;
     }
     else {
-        say "Failed to load config";
+        $log->warn("Failed to load config");
         return ( $self->{config}->is_loaded() ) ? () : $I_EXIT;
     }
 }
@@ -239,15 +239,15 @@ sub do_run {
     return $I_DONE if !defined $jid;
 
     my $pid = $self->{dispatcher}->dispatch( $jid, sub {
-        say "Releasing job $jid after completion";
+        $log->infof( "Releasing job %s after completion", $jid );
         $self->{allocator}->release( $jid );
     });
     if ( $pid ) {
-        say "Dispatched job $jid to process $pid";
+        $log->infof( "Dispatched job %s to process %s", $jid, $pid );
         $self->{alarms}->insert( $self->{config}->timeout(), $pid );
     }
     else {
-        say "Failed to dispatch job $jid, releasing it again";
+        $log->infof( "Failed to dispatch job %s, releasing it again", $jid );
         $self->{allocator}->release( $jid );
     }
 
@@ -259,7 +259,8 @@ sub do_reap {
     my %jobs = $self->{dispatcher}->reap();
     for my $pid ( keys %jobs ) {
         my ( $jid, $status ) = @{ $jobs{$pid} };
-        say "Reaped pid $pid (status $status), releasing job $jid";
+        $log->infof( "Reaped pid %s (status %s), releasing job %s",
+            $pid, $status, $jid );
         $self->{allocator}->release( $jid );
     }
     return;
@@ -277,7 +278,7 @@ sub do_timeout {
     if ( $pid ) {
         my $jid = $self->{dispatcher}->kill( $pid );
         if ( $jid ) {
-            say "Killed pid $pid, releasing job $jid";
+            $log->infof( "Killed pid %s, releasing job %s", $pid, $jid );
             $self->{allocator}->release( $jid );
         }
     }
@@ -301,8 +302,8 @@ sub do_shutdown {
 
     for my $pid ( keys %jobs ) {
         my ( $jid, $status ) = @{ $jobs{$pid} };
-        say "Reaped pid $pid (status $status)";
-        say "Releasing job $jid";
+        $log->info( "Reaped pid %s (status %s), releasing job %s",
+            $pid, $status, $jid );
         $self->{allocator}->release( $jid );
     }
     return $I_DONE;

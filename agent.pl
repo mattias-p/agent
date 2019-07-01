@@ -6,17 +6,36 @@ use feature 'say';
 use App::Allocator;
 use App::Config;
 use App::Agent qw( cmp_inputs $I_IDLE $I_REAP $I_TIMEOUT $I_WORK $I_LOAD $I_TERM );
+use Cwd;
+use File::Spec;
 use Heap::Binary;
+use Log::Any '$log';
+use Log::Any::Adapter;
+use Proc::Daemon;
+use Readonly;
 use Unix::AlarmQueue;
 use Unix::Dispatcher;
 use Unix::Idler;
 use Unix::Signal qw( install_handler retrieve_caught uninstall_handlers );
+
+Readonly my $log_file => File::Spec->catfile( getcwd, 'agent.log' );
+Readonly my $pid_file => File::Spec->catfile( getcwd, 'agent.pid' );
+Readonly my $out_file => File::Spec->catfile( getcwd, 'agent.out' );
+
+Log::Any::Adapter->set( 'File', $log_file );
 
 sub work {
     my $jid = shift;
     uninstall_handlers();    # reset signal handlers for child process
     sleep( 5 + rand 11 );    # pretend to do something
     return;
+}
+
+my $config = App::Config->new( p_fail => 0.2 );
+
+if ( !$config->load() ) {
+    say STDERR "Failed to load config";
+    exit 1;
 }
 
 my $alarms = Unix::AlarmQueue->new();
@@ -27,8 +46,6 @@ my $dispatcher = Unix::Dispatcher->new(
 );
 
 my $idler = Unix::Idler->new();
-
-my $config = App::Config->new( p_fail => 0.2 );
 
 my $allocator = App::Allocator->new( p_fail => 0.2 );
 
@@ -41,9 +58,28 @@ my $agent = App::Agent->new(
 );
 
 my $events = Heap::Binary->new( \&cmp_inputs );
-$events->insert($I_LOAD);
 
-say "$$";
+my $daemon = Proc::Daemon->new();
+my $pid    = $daemon->Init(
+    {
+        pid_file     => $pid_file,
+        child_STDERR => $out_file,
+        child_STDOUT => $out_file,
+    }
+);
+if ($pid) {
+    say STDERR "Started daemon (pid $pid)";
+
+    exit;
+}
+elsif ( !defined $pid ) {
+    say STDERR "Failed to start daemon";
+
+    exit 1;
+}
+
+Log::Any::Adapter->set( 'File', $log_file );    # reopen after daemonization
+
 install_handler( 'ALRM' );
 install_handler( 'CHLD' );
 install_handler( 'HUP' );
