@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use Carp qw( confess );
+use Log::Any qw( $log );
 
 sub new {
     my ( $class, %args ) = @_;
@@ -23,7 +24,7 @@ sub claim {
     my $self = shift;
 
     if ($self->{p_fail} > 0 && rand() < $self->{p_fail} ) {
-        warn "injected failure";
+        $log->warn("injected failure (allocator)");
         return;
     }
 
