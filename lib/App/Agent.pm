@@ -60,9 +60,9 @@ Readonly my $BUILDER => FSM::Builder->new();
 
 $BUILDER->define_input(
     $I_IDLE => (
-        $S_LOAD          => $S_IDLE,
-        $S_RUN           => $S_IDLE,
-        $S_TIMEOUT       => $S_IDLE,
+        $S_LOAD          => $S_RUN,
+        $S_RUN           => $S_RUN,
+        $S_TIMEOUT       => $S_RUN,
         $S_IDLE          => $S_IDLE,
         $S_REAP          => $S_IDLE,
         $S_GRACE_TIMEOUT => $S_GRACE_IDLE,
@@ -75,9 +75,9 @@ $BUILDER->define_input(
 
 $BUILDER->define_input(
     $I_DONE => (
-        $S_LOAD          => $S_IDLE,
+        $S_LOAD          => $S_RUN,
         $S_RUN           => $S_IDLE,
-        $S_TIMEOUT       => $S_IDLE,
+        $S_TIMEOUT       => $S_RUN,
         $S_IDLE          => $S_IDLE,
         $S_REAP          => $S_IDLE,
         $S_GRACE_TIMEOUT => $S_EXIT,
