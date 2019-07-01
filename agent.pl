@@ -45,12 +45,14 @@ my $dispatcher = Unix::Dispatcher->new(
     p_fail => 0.2,
 );
 
+my $initial_state = $S_LOAD;
+
 my $idler = Unix::Idler->new();
 
 my $allocator = App::Allocator->new( p_fail => 0.2 );
 
 my $agent = App::Agent->new(
-    initial_state => $S_LOAD,
+    initial_state => $initial_state,
     alarms        => $alarms,
     allocator     => $allocator,
     config        => $config,
@@ -82,6 +84,7 @@ elsif ( !defined $pid ) {
 Log::Any::Adapter->set( 'File', $log_file );    # reopen after daemonization
 $log->noticef( "***************************", $$ );
 $log->noticef( "Started daemon (pid %s)", $$ );
+$log->noticef( "State(%s)", $initial_state );
 
 install_handler( 'ALRM' );
 install_handler( 'CHLD' );
