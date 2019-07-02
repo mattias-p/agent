@@ -31,8 +31,7 @@ sub claim {
 
     my ($uid, $jid) = $db->unit_claim();
 
-    if ($self->{p_fail} > 0 && rand() < $self->{p_fail} ) {
-        $log->warn("no jobs");
+    if (!$uid) {
         return;
     }
 

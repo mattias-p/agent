@@ -190,7 +190,7 @@ sub cmp_inputs {
 sub new {
     my ( $class, %args ) = @_;
     my $config        = delete $args{config};
-    my $work          = delete $args{work};
+    my $worker        = delete $args{worker};
     my $db            = delete $args{db};
     my $allocator     = delete $args{allocator};
     my $dispatcher    = delete $args{dispatcher};
@@ -219,7 +219,7 @@ sub new {
     $self->{dispatcher} = $dispatcher;
     $self->{alarms}     = $alarms;
     $self->{idler}      = $idler;
-    $self->{work}       = $work;
+    $self->{worker}     = $worker;
 
     return $self;
 }
@@ -252,10 +252,15 @@ sub do_run {
     }
 
     my $pid = $self->{dispatcher}->spawn( $jid, $uid, sub {
+        $self->{worker}->setup();
+
         $log->infof( "job(%s:%s) starting work", $uid, $jid );
-        my $db = $self->{work}( $jid, $uid );
+        $self->{worker}->work( $jid, $uid );
+
+        my $dbh = $self->{worker}->dbh();
+
         $log->infof( "job(%s:%s) completed work, releasing it", $uid, $jid );
-        $self->{allocator}->release($db, $jid );
+        $self->{allocator}->release( $dbh, $jid );
         return;
     });
     if ( !$pid ) {

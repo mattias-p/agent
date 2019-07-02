@@ -7,6 +7,7 @@ use App::Agent qw( cmp_inputs $I_ALRM $I_CHLD $I_HUP $I_STEP $I_TERM $I_USR2 $S_
 use App::Allocator;
 use App::Config;
 use App::DB;
+use App::Worker;
 use Cwd;
 use File::Spec;
 use Heap::Binary;
@@ -25,28 +26,18 @@ Readonly my $out_file => File::Spec->catfile( getcwd, 'agent.out' );
 
 Log::Any::Adapter->set( 'File', $log_file );
 
+# to be executed in child processes before any real work takes place
+sub setup_worker {
+    uninstall_handlers();    # reset signal handlers
+    srand($$);               # make sure workers don't all emit identical synthetic errors
+    return;
+}
+
 my $config = App::Config->new( p_fail => 0.1 );
 
 if ( !$config->load() ) {
     say STDERR "Failed to load config";
     exit 1;
-}
-
-sub work {
-    my $jid = shift;
-    my $uid = shift;
-
-    uninstall_handlers();    # reset signal handlers for child process
-    srand($$);
-    my $t = 5 + rand(11);
-    $log->infof( "job(%d:%d) pretending to work for %0.2fs", $uid, $jid, $t );
-    sleep($t);               # pretend to do something
-
-    my $db = App::DB->connect( config => $config )
-      ;    # runs in child process, so use separate dbh
-
-    $db->unit_set_completed($jid);
-    return $db;
 }
 
 {
@@ -83,6 +74,12 @@ my $allocator = App::Allocator->new(
     p_fail => 0.0,
 );
 
+my $worker = App::Worker->new(
+    config => $config,
+    db     => 'App::DB',
+    setup  => \&setup_worker,
+);
+
 my $alarms = Unix::AlarmQueue->new();
 
 my $dispatcher = Unix::Dispatcher->new(
@@ -98,7 +95,7 @@ my $db = App::DB->connect( config => $config );
 
 my $agent = App::Agent->new(
     initial_state => $initial_state,
-    work          => \&work,
+    worker        => $worker,
     db            => $db,
     alarms        => $alarms,
     allocator     => $allocator,
