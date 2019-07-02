@@ -3,9 +3,10 @@ use strict;
 use warnings;
 use feature 'say';
 
+use App::Agent qw( cmp_inputs $I_ALRM $I_CHLD $I_HUP $I_STEP $I_TERM $I_USR2 $S_LOAD );
 use App::Allocator;
 use App::Config;
-use App::Agent qw( cmp_inputs $I_ALRM $I_CHLD $I_HUP $I_STEP $I_TERM $I_USR2 $S_LOAD );
+use App::DB;
 use Cwd;
 use File::Spec;
 use Heap::Binary;
@@ -24,13 +25,6 @@ Readonly my $out_file => File::Spec->catfile( getcwd, 'agent.out' );
 
 Log::Any::Adapter->set( 'File', $log_file );
 
-sub work {
-    my $jid = shift;
-    uninstall_handlers();    # reset signal handlers for child process
-    sleep( 5 + rand 11 );    # pretend to do something
-    return;
-}
-
 my $config = App::Config->new( p_fail => 0.1 );
 
 if ( !$config->load() ) {
@@ -38,34 +32,32 @@ if ( !$config->load() ) {
     exit 1;
 }
 
-my $alarms = Unix::AlarmQueue->new();
+sub work {
+    my $jid = shift;
+    uninstall_handlers();    # reset signal handlers for child process
+    sleep( 5 + rand 11 );    # pretend to do something
 
-my $dispatcher = Unix::Dispatcher->new(
-    config => $config,
-    action => \&work,
-    p_fail => 0.0,
-);
+    my $db = App::DB->connect( config => $config )
+      ;    # runs in child process, so use separate dbh
 
-my $initial_state = $S_LOAD;
+    $db->unit_set_completed($jid);
+    return $db;
+}
 
-my $idler = Unix::Idler->new();
+{
+    my $db = App::DB->connect( config => $config );
 
-my $allocator = App::Allocator->new( p_fail => 0.2 );
+    for (1..10) {
+        $db->unit_new();
+    }
 
-my $agent = App::Agent->new(
-    initial_state => $initial_state,
-    alarms        => $alarms,
-    allocator     => $allocator,
-    config        => $config,
-    dispatcher    => $dispatcher,
-    idler         => $idler,
-);
-
-my $events = Heap::Binary->new( \&cmp_inputs );
+    $db->disconnect;
+}
 
 my $daemon = Proc::Daemon->new();
 my $pid    = $daemon->Init(
     {
+        work_dir     => getcwd,
         pid_file     => $pid_file,
         child_STDERR => $out_file,
         child_STDOUT => $out_file,
@@ -81,6 +73,37 @@ elsif ( !defined $pid ) {
 
     exit 1;
 }
+
+my $allocator = App::Allocator->new(
+    p_fail => 0.0,
+);
+
+my $alarms = Unix::AlarmQueue->new();
+
+my $dispatcher = Unix::Dispatcher->new(
+    config => $config,
+    action => \&work,
+    p_fail => 0.0,
+);
+
+my $initial_state = $S_LOAD;
+
+my $idler = Unix::Idler->new();
+
+my $db = App::DB->connect( config => $config );
+
+my $agent = App::Agent->new(
+    initial_state => $initial_state,
+    db            => $db,
+    alarms        => $alarms,
+    allocator     => $allocator,
+    config        => $config,
+    dispatcher    => $dispatcher,
+    idler         => $idler,
+);
+
+my $events = Heap::Binary->new( \&cmp_inputs );
+
 
 Log::Any::Adapter->set( 'File', $log_file );    # reopen after daemonization
 $log->noticef( "***************************", $$ );
@@ -103,5 +126,7 @@ while ( !$agent->is_final ) {
     $events->insert($I_TERM) if retrieve_caught('TERM');
     $events->insert($I_USR2) if retrieve_caught('USR2');
 }
+
+$db->disconnect();
 
 exit 0;

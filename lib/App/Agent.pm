@@ -21,7 +21,7 @@ Readonly our $S_GRACE_IDLE    => 'GRACE_IDLE';
 Readonly our $S_GRACE_REAP    => 'GRACE_REAP';
 Readonly our $S_GRACE_TIMEOUT => 'GRACE_TIMEOUT';
 Readonly our $S_SHUTDOWN      => 'SHUTDOWN';
-Readonly our $S_FINAL         => 'EXIT';
+Readonly our $S_FINAL         => 'FINAL';
 
 Readonly my %ENTRY_ACTIONS => (
     $S_LOAD          => \&do_load,
@@ -189,7 +189,8 @@ sub cmp_inputs {
 
 sub new {
     my ( $class, %args ) = @_;
-    my $config     = delete $args{config};
+    my $config        = delete $args{config};
+    my $db            = delete $args{db};
     my $allocator     = delete $args{allocator};
     my $dispatcher    = delete $args{dispatcher};
     my $alarms        = delete $args{alarms};
@@ -212,6 +213,7 @@ sub new {
         },
     );
     $self->{config}     = $config;
+    $self->{db}         = $db;
     $self->{allocator}  = $allocator;
     $self->{dispatcher} = $dispatcher;
     $self->{alarms}     = $alarms;
@@ -241,23 +243,25 @@ sub do_run {
         return $I_DONE;
     }
 
-    my $jid = $self->{allocator}->claim();
+    my ( $jid, $uid ) = $self->{allocator}->claim($self->{db});
     if ( !$jid ) {
         $log->infof( "no jobs" );
         return $I_DONE;
     }
 
-    my $pid = $self->{dispatcher}->spawn( $jid, sub {
-        $log->infof( "job(%s) completed, releasing it", $jid );
-        $self->{allocator}->release( $jid );
+    my $pid = $self->{dispatcher}->spawn( $jid, $uid, sub {
+        my $db = shift;
+
+        $log->infof( "job(%s:%s) completed, releasing it", $jid, $uid );
+        $self->{allocator}->release($db, $jid );
     });
     if ( !$pid ) {
-        $log->infof( "job(%s) spawning worker failed, releasing job", $jid );
-        $self->{allocator}->release( $jid );
+        $log->infof( "job(%s:%s) spawning worker failed, releasing job", $jid, $uid );
+        $self->{allocator}->release($self->{db}, $jid );
         return $I_DONE;
     }
 
-    $log->infof( "job(%s) allocated, worker(%s) spawned", $jid, $pid );
+    $log->infof( "job(%s:%s) allocated, worker(%s) spawned", $jid, $uid, $pid );
     $self->{alarms}->add_timeout( $self->{config}->timeout() );
 
     return;
@@ -267,13 +271,13 @@ sub do_reap {
     my $self = shift;
     my %jobs = $self->{dispatcher}->reap();
     for my $pid ( keys %jobs ) {
-        my ( $jid, $severity, $details ) = @{ $jobs{$pid} };
+        my ( $jid, $uid, $severity, $details ) = @{ $jobs{$pid} };
         my $is_severity = "is_$severity";
         if ( $log->$is_severity() ) {
             my $reason = $self->{dispatcher}->termination_reason($details);
-            $log->$severity( "worker($pid) $reason, releasing job($jid)" );
+            $log->$severity( "worker($pid) $reason, releasing job($jid:$uid)" );
         }
-        $self->{allocator}->release( $jid );
+        $self->{allocator}->release($self->{db}, $jid );
     }
     return;
 }
@@ -292,9 +296,10 @@ sub do_timeout {
     my %jobs = $self->{dispatcher}->kill_overdue();
 
     for my $pid ( keys %jobs ) {
-        my $jid = $jobs{$pid};
-        $log->infof( "overdue worker(%s) killed, releasing job(%s)", $pid, $jid );
-        $self->{allocator}->release( $jid );
+        my ( $jid, $uid ) = @{ $jobs{$pid} };
+        $log->infof( "overdue worker(%s) killed, releasing job(%s:%s)",
+            $pid, $jid, $uid );
+        $self->{allocator}->release($self->{db},$jid);
     }
 
     return;
@@ -317,13 +322,13 @@ sub do_shutdown {
     my %jobs = $self->{dispatcher}->shutdown();
 
     for my $pid ( keys %jobs ) {
-        my ( $jid, $severity, $details ) = @{ $jobs{$pid} };
+        my ( $jid, $uid, $severity, $details ) = @{ $jobs{$pid} };
         my $is_severity = "is_$severity";
         if ( $log->$is_severity() ) {
             my $reason = $self->{dispatcher}->termination_reason($details);
-            $log->$severity( "worker($pid) $reason, releasing job($jid)" );
+            $log->$severity( "worker($pid) $reason, releasing job($jid:$uid)" );
         }
-        $self->{allocator}->release( $jid );
+        $self->{allocator}->release( $self->{db},$jid );
     }
     return $I_DONE;
 }

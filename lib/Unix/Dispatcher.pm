@@ -47,6 +47,7 @@ sub can_spawn_worker {
 sub spawn {
     my $self   = shift;
     my $jid    = shift;
+    my $uid    = shift;
     my $finish = shift;
 
     if ($self->{p_fail} > 0 && rand() < $self->{p_fail} ) {
@@ -60,12 +61,12 @@ sub spawn {
         return;
     }
     if ( $pid == 0 ) {
-        $self->{action}($jid);
-        $finish->();
+        my $res = $self->{action}($jid, $uid);
+        $finish->($res);
         exit 0;
     }
     my $deadline = $now + $self->{config}->timeout();
-    $self->{jobs}{$pid} = [ $jid, $deadline ];
+    $self->{jobs}{$pid} = [ $jid, $uid, $deadline ];
 
     return $pid;
 }
@@ -80,9 +81,9 @@ sub _reap {
         my $status = waitpid( $pid, $flags );
         if ( $status != 0 ) {
             my $job = delete $self->{jobs}{$pid};
-            my $jid = $job->[0];
+            my ( $jid, $uid ) = @{$job};
             my $severity = $self->termination_severity( ${^CHILD_ERROR_NATIVE} );
-            $reaped{$pid} = [ $jid, $severity, ${^CHILD_ERROR_NATIVE} ];
+            $reaped{$pid} = [ $jid, $uid, $severity, ${^CHILD_ERROR_NATIVE} ];
         }
     }
 
@@ -116,9 +117,10 @@ sub kill_overdue {
 
     my %jobs;
     for my $pid ( keys %{ $self->{jobs} } ) {
-        if ( $self->{jobs}{$pid}[1] >= $now ) {
+        if ( $self->{jobs}{$pid}[2] >= $now ) {
             CORE::kill 'KILL', $pid;
-            $jobs{$pid} = $self->{jobs}{$pid}[0];
+            my ( $jid, $uid ) = @{ $self->{jobs}{$pid} };
+            $jobs{$pid} = [$jid, $uid];
         }
     }
 

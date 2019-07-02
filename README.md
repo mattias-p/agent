@@ -82,11 +82,8 @@ TBD
 
 ## Known problems
 
-Any job id must not be allocated more than once you you'll end up with a race
-condition with the current design.
-Instead units of work should be numbered separately from jobs.
-Most of the time the unit ids are probably at least as interesting as job ids so
-they should be included in the log.
+Workers get killed off far too quickly.
+Something's wrong.
 
 
 [Clean Architecture]: https://www.goodreads.com/book/show/18043011-clean-architecture

@@ -29,6 +29,9 @@ sub load {
     $self->{data} = {
         timeout     => 10,
         max_workers => 1,
+        db_data_source => 'dbi:SQLite:dbname=agent.db',
+        db_username=>'',
+        db_password=>'',
     };
 
     return 1;
@@ -50,6 +53,24 @@ sub max_workers {
     my $self = shift;
 
     return $self->{data}{max_workers};
+}
+
+sub db_data_source {
+    my $self = shift;
+
+    return $self->{data}{db_data_source};
+}
+
+sub db_username {
+    my $self = shift;
+
+    return $self->{data}{db_username};
+}
+
+sub db_password {
+    my $self = shift;
+
+    return $self->{data}{db_password};
 }
 
 1;
