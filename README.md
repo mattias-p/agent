@@ -13,9 +13,8 @@ file gracefully and shuts down gracefully or hard.
 It is also able to guarantee failure of certain operations a certain percentage
 of the time - for testing purposes.
 
-The current implementations of the configuration file and the source of jobs are
-just dummies.
-Consequently the jobs performed by the workers are also just make-believe - they
+The current implementations of the configuration file is just a dummy.
+The the work carried out by the workers is also just make-believe - they
 simply sleep for a random number of seconds.
 
 The agent has a number of phases: initialization, active, graceful shutdown,
@@ -82,6 +81,24 @@ TBD
 
 ## Known problems
 
-The worker process related code is a bit messy.
+* The code around the Allocator and Worker should be refactored.
+
+* The worker processes should be implemented using exec instead of simple function
+  calls.
+
+* The Agent violates the Liskov substitution principle by inheriting from FSM and
+  then letting its output values depend on external state.
+  The Agent chould have an FSM as a member through composition instead.
+
+* Take another look at FSM output functions.
+  Could the Agent implementation be improved by using a full Moore och Mealy machine?
+
+* Take another look at the event queue for the FSM.
+  Could the backing binary heap be replaced by a fifo or bitset?
+  Does the finite state machine have to be changed to accomodate that?
+
+* The logging is getting verbose.
+  There should be some filtering.
+
 
 [Clean Architecture]: https://www.goodreads.com/book/show/18043011-clean-architecture
