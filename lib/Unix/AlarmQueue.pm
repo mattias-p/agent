@@ -6,17 +6,11 @@ use Carp qw( confess );
 
 sub new {
     my ($class, %args) = @_;
-
-    my $time = delete $args{time};
-
     !%args or confess 'unrecognized arguments';
-
-    $time //= \&CORE::time;
 
     my $self = bless {}, $class;
     
     $self->{deadlines} = [];
-    $self->{time}      = $time;
 
     return $self;
 }
@@ -25,7 +19,7 @@ sub add_timeout {
     my $self    = shift;
     my $timeout = shift;
 
-    my $now = $self->{time}();
+    my $now = time;
 
     my $deadline = $now + $timeout;
     my $old_deadline = $self->{deadlines}[0];
@@ -50,7 +44,7 @@ sub next_timeout {
 sub _set_alarm {
     my $self = shift;
 
-    my $now = $self->{time}();
+    my $now = time;
 
     my $is_overdue;
     while ($@{ $self->{deadlines} } && $self->{deadlines}[0] <= $now ) {
