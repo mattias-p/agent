@@ -15,7 +15,6 @@ sub new {
     my ( $class, %args ) = @_;
 
     my $config = delete $args{config};
-    my $action = delete $args{action};
     my $p_fail = delete $args{p_fail};
 
     !%args or confess 'unexpected arguments';
@@ -25,7 +24,6 @@ sub new {
     my $self = bless {}, $class;
 
     $self->{jobs}   = {};
-    $self->{action} = $action;
     $self->{p_fail} = $p_fail;
     $self->{config} = $config;
 
@@ -48,7 +46,7 @@ sub spawn {
     my $self   = shift;
     my $jid    = shift;
     my $uid    = shift;
-    my $finish = shift;
+    my $action = shift;
 
     if ($self->{p_fail} > 0 && rand() < $self->{p_fail} ) {
         $log->warn("injected failure (dispatcher)");
@@ -61,8 +59,7 @@ sub spawn {
         return;
     }
     if ( $pid == 0 ) {
-        my $res = $self->{action}($jid, $uid);
-        $finish->($res);
+        $action->();
         exit 0;
     }
     my $deadline = $now + $self->{config}->timeout();
@@ -95,21 +92,6 @@ sub reap {
     return $self->_reap( WNOHANG );
 }
 
-sub kill {
-    my $self = shift;
-    my $pid  = shift;
-
-    my $jid = $self->{jobs}{$pid}[0];
-
-    if ( $jid ) {
-        CORE::kill 'KILL', $pid;
-        return $jid;
-    }
-    else {
-        return;
-    }
-}
-
 sub kill_overdue {
     my $self = shift;
 
@@ -117,8 +99,8 @@ sub kill_overdue {
 
     my %jobs;
     for my $pid ( keys %{ $self->{jobs} } ) {
-        if ( $self->{jobs}{$pid}[2] >= $now ) {
-            CORE::kill 'KILL', $pid;
+        if ( $self->{jobs}{$pid}[2] <= $now ) {
+            kill 'KILL', $pid;
             my ( $jid, $uid ) = @{ $self->{jobs}{$pid} };
             $jobs{$pid} = [$jid, $uid];
         }
@@ -131,7 +113,7 @@ sub shutdown {
     my $self = shift;
 
     for my $pid ( keys %{ $self->{jobs} } ) {
-        CORE::kill 'KILL', $pid;
+        kill 'KILL', $pid;
     }
 
     return $self->_reap( 0 );

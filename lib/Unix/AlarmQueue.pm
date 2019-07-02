@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use Carp qw( confess );
+use Log::Any qw( $log );
 
 sub new {
     my ($class, %args) = @_;
@@ -19,14 +20,15 @@ sub add_timeout {
     my $self    = shift;
     my $timeout = shift;
 
-    my $now = time;
-
+    my $now      = time;
     my $deadline = $now + $timeout;
+    $log->debugf( "adding deadline(@%d) i.e. now+%ds", $deadline, $timeout );
+
     my $old_deadline = $self->{deadlines}[0];
     push @{ $self->{deadlines} }, $deadline;
     $self->{deadlines} = [ sort @{ $self->{deadlines} } ];
     if ( !defined $old_deadline || $deadline < $old_deadline ) {
-        $self->_set_alarm;
+        $self->next_timeout();
     }
     return;
 }
@@ -34,33 +36,21 @@ sub add_timeout {
 sub next_timeout {
     my $self = shift;
 
-    shift @{ $self->{deadlines} };
-    if ( @{ $self->{deadlines} } ) {
-        $self->_set_alarm;
-    }
-    return;
-}
-
-sub _set_alarm {
-    my $self = shift;
-
-    my $now = time;
-
-    my $is_overdue;
-    while ($@{ $self->{deadlines} } && $self->{deadlines}[0] <= $now ) {
-        $is_overdue = shift @{ $self->{deadlines} };
-    }
-    if ( $is_overdue ) {
-        kill 'ALRM', $$;
-    }
-
+    my $now      = time;
     my $deadline = $self->{deadlines}[0];
+    while ( defined $deadline && $deadline <= $now ) {
+        $log->debugf( "removing deadline(@%d)", $deadline );
+        shift @{ $self->{deadlines} };
+        $deadline = $self->{deadlines}[0];
+    }
 
-    if (defined $deadline) {
+    if ( defined $deadline ) {
         my $new_timeout = $deadline - $now;
+        $log->debugf( "setting alarm(now+%ds) for deadline(@%d)", $new_timeout, $deadline );
         my $old_timeout = alarm $new_timeout;
-        if ( $old_timeout ) {
-            $self->insert( $now + $old_timeout );
+        if ($old_timeout) {
+            $log->debugf( "got back alarm(now+%ds)", $old_timeout );
+            $self->add_timeout($old_timeout);
         }
     }
 

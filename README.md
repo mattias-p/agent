@@ -82,8 +82,6 @@ TBD
 
 ## Known problems
 
-Workers get killed off far too quickly.
-Something's wrong.
-
+The worker process related code is a bit messy.
 
 [Clean Architecture]: https://www.goodreads.com/book/show/18043011-clean-architecture

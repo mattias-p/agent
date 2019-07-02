@@ -34,8 +34,13 @@ if ( !$config->load() ) {
 
 sub work {
     my $jid = shift;
+    my $uid = shift;
+
     uninstall_handlers();    # reset signal handlers for child process
-    sleep( 5 + rand 11 );    # pretend to do something
+    srand($$);
+    my $t = 5 + rand(11);
+    $log->infof( "job(%d:%d) pretending to work for %0.2fs", $uid, $jid, $t );
+    sleep($t);               # pretend to do something
 
     my $db = App::DB->connect( config => $config )
       ;    # runs in child process, so use separate dbh
@@ -82,7 +87,6 @@ my $alarms = Unix::AlarmQueue->new();
 
 my $dispatcher = Unix::Dispatcher->new(
     config => $config,
-    action => \&work,
     p_fail => 0.0,
 );
 
@@ -94,6 +98,7 @@ my $db = App::DB->connect( config => $config );
 
 my $agent = App::Agent->new(
     initial_state => $initial_state,
+    work          => \&work,
     db            => $db,
     alarms        => $alarms,
     allocator     => $allocator,

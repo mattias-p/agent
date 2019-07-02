@@ -190,6 +190,7 @@ sub cmp_inputs {
 sub new {
     my ( $class, %args ) = @_;
     my $config        = delete $args{config};
+    my $work          = delete $args{work};
     my $db            = delete $args{db};
     my $allocator     = delete $args{allocator};
     my $dispatcher    = delete $args{dispatcher};
@@ -207,7 +208,7 @@ sub new {
             my $state = shift;
             my $input = shift;
 
-            $log->infof( "Input(%s) -> State(%s)", $input, $state );
+            $log->infof( "input(%s) -> state(%s)", $input, $state );
 
             return $ENTRY_ACTIONS{$state}->( $self );
         },
@@ -218,6 +219,7 @@ sub new {
     $self->{dispatcher} = $dispatcher;
     $self->{alarms}     = $alarms;
     $self->{idler}      = $idler;
+    $self->{work}       = $work;
 
     return $self;
 }
@@ -250,18 +252,19 @@ sub do_run {
     }
 
     my $pid = $self->{dispatcher}->spawn( $jid, $uid, sub {
-        my $db = shift;
-
-        $log->infof( "job(%s:%s) completed, releasing it", $jid, $uid );
+        $log->infof( "job(%s:%s) starting work", $uid, $jid );
+        my $db = $self->{work}( $jid, $uid );
+        $log->infof( "job(%s:%s) completed work, releasing it", $uid, $jid );
         $self->{allocator}->release($db, $jid );
+        return;
     });
     if ( !$pid ) {
-        $log->infof( "job(%s:%s) spawning worker failed, releasing job", $jid, $uid );
+        $log->infof( "job(%s:%s) spawning worker failed, releasing job", $uid, $jid );
         $self->{allocator}->release($self->{db}, $jid );
         return $I_DONE;
     }
 
-    $log->infof( "job(%s:%s) allocated, worker(%s) spawned", $jid, $uid, $pid );
+    $log->infof( "job(%s:%s) allocated, worker(%s) spawned", $uid, $jid, $pid );
     $self->{alarms}->add_timeout( $self->{config}->timeout() );
 
     return;
@@ -275,7 +278,7 @@ sub do_reap {
         my $is_severity = "is_$severity";
         if ( $log->$is_severity() ) {
             my $reason = $self->{dispatcher}->termination_reason($details);
-            $log->$severity( "worker($pid) $reason, releasing job($jid:$uid)" );
+            $log->$severity( "worker($pid) $reason, releasing job($uid:$jid)" );
         }
         $self->{allocator}->release($self->{db}, $jid );
     }
@@ -298,7 +301,7 @@ sub do_timeout {
     for my $pid ( keys %jobs ) {
         my ( $jid, $uid ) = @{ $jobs{$pid} };
         $log->infof( "overdue worker(%s) killed, releasing job(%s:%s)",
-            $pid, $jid, $uid );
+            $pid, $uid, $jid );
         $self->{allocator}->release($self->{db},$jid);
     }
 
@@ -326,7 +329,7 @@ sub do_shutdown {
         my $is_severity = "is_$severity";
         if ( $log->$is_severity() ) {
             my $reason = $self->{dispatcher}->termination_reason($details);
-            $log->$severity( "worker($pid) $reason, releasing job($jid:$uid)" );
+            $log->$severity( "worker($pid) $reason, releasing job($uid:$jid)" );
         }
         $self->{allocator}->release( $self->{db},$jid );
     }
