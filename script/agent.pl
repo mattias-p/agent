@@ -7,7 +7,6 @@ use App::Agent qw( cmp_inputs $I_ALRM $I_CHLD $I_HUP $I_STEP $I_TERM $I_USR2 $S_
 use App::Allocator;
 use App::Config;
 use App::DB;
-use App::Worker;
 use Cwd;
 use File::Spec;
 use Heap::Binary;
@@ -70,16 +69,6 @@ elsif ( !defined $pid ) {
     exit 1;
 }
 
-my $allocator = App::Allocator->new(
-    p_fail => 0.0,
-);
-
-my $worker = App::Worker->new(
-    config => $config,
-    db     => 'App::DB',
-    setup  => \&setup_worker,
-);
-
 my $alarms = Unix::AlarmQueue->new();
 
 my $dispatcher = Unix::Dispatcher->new(
@@ -93,15 +82,21 @@ my $idler = Unix::Idler->new();
 
 my $db = App::DB->connect( config => $config );
 
+my $allocator = App::Allocator->new(
+    db     => $db,
+    p_fail => 0.0,
+);
+
 my $agent = App::Agent->new(
     initial_state => $initial_state,
-    worker        => $worker,
     db            => $db,
     alarms        => $alarms,
     allocator     => $allocator,
     config        => $config,
     dispatcher    => $dispatcher,
     idler         => $idler,
+    setup_worker  => \&setup_worker,
+    db_class      => 'App::DB',
 );
 
 my $events = Heap::Binary->new( \&cmp_inputs );

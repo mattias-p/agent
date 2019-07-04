@@ -73,7 +73,7 @@ final phase.
 
 ### The final phase
 
-In the final phase the agent simply terminates with exit status 0;
+In the final phase the agent simply terminates with exit status 0.
 
 ## Design
 
@@ -81,7 +81,7 @@ TBD
 
 ## Known problems
 
-* The code around the Allocator and Worker should be refactored.
+* The code around the Allocator, Job and Dispatcher should be cleaned up.
 
 * The worker processes should be implemented using exec instead of simple function
   calls.

@@ -2,12 +2,14 @@ package App::Allocator;
 use strict;
 use warnings;
 
+use App::Job;
 use Carp qw( confess );
 use Log::Any qw( $log );
 
 sub new {
     my ( $class, %args ) = @_;
 
+    my $db     = delete $args{db};
     my $p_fail = delete $args{p_fail};
 
     !%args or confess 'unexpected arguments';
@@ -15,21 +17,21 @@ sub new {
     my $self = bless {}, $class;
 
     $self->{jobs}   = {};
+    $self->{db}     = $db;
     $self->{p_fail} = $p_fail;
 
     return $self;
 }
 
-sub claim {
+sub claim_job {
     my $self = shift;
-    my $db   = shift;
 
     if ($self->{p_fail} > 0 && rand() < $self->{p_fail} ) {
         $log->warn("injected failure (allocator)");
         return;
     }
 
-    my ($uid, $jid) = $db->unit_claim();
+    my ($uid, $jid) = $self->{db}->unit_claim();
 
     if (!$uid) {
         return;
@@ -37,38 +39,11 @@ sub claim {
 
     $self->{jobs}{$jid} = $uid;
 
-    return ( $jid, $uid );
-}
-
-sub release {
-    my $self = shift;
-    my $db   = shift;
-    my $jid  = shift;
-
-    $db->unit_release( $jid );
-
-    delete $self->{jobs}{$jid};
-
-    return;
-}
-
-sub set_completed {
-    my $self = shift;
-    my $db   = shift;
-    my $jid  = shift;
-
-    $db->unit_set_completed( $jid );
-
-    return;
-}
-
-sub get_unit_id {
-    my $self = shift;
-    my $jid  = shift;
-
-    defined $self->{jobs}{$jid}[0] or confess "get_unit_id $jid";
-
-    return $self->{jobs}{$jid}[0];
+    return App::Job->new(
+        db      => $self->{db},
+        job_id  => $jid,
+        item_id => $uid,
+    );
 }
 
 1;
