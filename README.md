@@ -83,6 +83,7 @@ TBD
 
 * Take another look at FSM output functions.
   Could the Agent implementation be improved by using a full Moore och Mealy machine?
+  Otherwise consider simplifying the FSM to be a DFA without the bells and whistles.
 
 * Take another look at the event queue for the FSM.
   Could the backing binary heap be replaced by a fifo or bitset?
