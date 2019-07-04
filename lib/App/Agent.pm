@@ -4,7 +4,7 @@ use warnings;
 
 use Carp qw( confess );
 use Exporter qw( import );
-use FSM::Builder;
+use DFA::Builder;
 use Log::Any qw( $log );
 use Readonly;
 
@@ -54,7 +54,7 @@ Readonly our %INPUT_PRIORITIES => (
     $I_STEP => 7,
 );
 
-Readonly my $BUILDER => FSM::Builder->new();
+Readonly my $BUILDER => DFA::Builder->new();
 
 $BUILDER->define_input(
     $I_STEP => (
@@ -208,7 +208,7 @@ sub new {
     $self->{idler}        = $idler;
     $self->{setup_worker} = $setup_worker;
     $self->{db_class}     = $db_class;
-    $self->{fsm}          = $BUILDER->build(
+    $self->{lifecycle}    = $BUILDER->build(
         initial_state => $initial_state,
         final_states  => [$S_FINAL],
     );
@@ -220,7 +220,7 @@ sub process {
     my $self  = shift;
     my $input = shift;
 
-    my $state = $self->{fsm}->process($input);
+    my $state = $self->{lifecycle}->process($input);
 
     $log->infof( "input(%s) -> state(%s)", $input, $state );
 
@@ -230,7 +230,7 @@ sub process {
 sub is_final {
     my $self = shift;
 
-    return $self->{fsm}->is_final;
+    return $self->{lifecycle}->is_final;
 }
 
 sub do_load {

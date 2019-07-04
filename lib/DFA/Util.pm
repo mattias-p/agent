@@ -1,4 +1,4 @@
-package FSM::Util;
+package DFA::Util;
 use strict;
 use warnings;
 

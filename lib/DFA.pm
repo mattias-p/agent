@@ -1,9 +1,9 @@
-package FSM;
+package DFA;
 use strict;
 use warnings;
 
 use Carp qw( confess );
-use FSM::Util qw( is_transition_mapping is_name is_arrayref is_coderef );
+use DFA::Util qw( is_transition_mapping is_name is_arrayref is_coderef );
 use List::Util qw( all );
 
 sub new {
@@ -12,7 +12,6 @@ sub new {
     my $transitions     = delete $args{transitions};
     my $initial_state   = delete $args{initial_state};
     my $final_states    = delete $args{final_states};
-    my $output_function = delete $args{output_function};
     !%args or confess 'unexpected args';
 
     is_transition_mapping($transitions)
@@ -29,15 +28,11 @@ sub new {
       or confess 'final_states argument must be an arrayref of states '
       . 'defined in the transitions argument';
 
-    is_coderef($output_function)
-      or confess 'output_function argument must be a coderef';
-
     my $self = bless {}, $class;
 
     $self->{state}        = $initial_state;
     $self->{final_states} = { map { $_ => 1 } @{ $final_states } };
     $self->{transitions}  = $transitions;
-    $self->{output}       = $output_function;
 
     return $self;
 }
@@ -62,7 +57,7 @@ sub process {
 
     $self->{state} = $self->{transitions}{$input}{ $self->{state} };
 
-    return $self->{output}->( $self->{state}, $input );
+    return $self->{state};
 }
 
 1;
