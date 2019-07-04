@@ -4,7 +4,7 @@ use warnings;
 use feature 'say';
 
 use App::Agent qw( cmp_inputs $I_ALRM $I_CHLD $I_HUP $I_STEP $I_TERM $I_USR2 $S_LOAD );
-use App::Allocator;
+use App::JobSource;
 use App::Config;
 use App::DB;
 use Cwd;
@@ -82,7 +82,7 @@ my $idler = Unix::Idler->new();
 
 my $db = App::DB->connect( config => $config );
 
-my $allocator = App::Allocator->new(
+my $job_source = App::JobSource->new(
     db     => $db,
     p_fail => 0.0,
 );
@@ -91,7 +91,7 @@ my $agent = App::Agent->new(
     initial_state => $initial_state,
     db            => $db,
     alarms        => $alarms,
-    allocator     => $allocator,
+    job_source    => $job_source,
     config        => $config,
     dispatcher    => $dispatcher,
     idler         => $idler,

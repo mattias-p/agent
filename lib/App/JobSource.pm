@@ -1,4 +1,4 @@
-package App::Allocator;
+package App::JobSource;
 use strict;
 use warnings;
 
@@ -16,7 +16,6 @@ sub new {
 
     my $self = bless {}, $class;
 
-    $self->{jobs}   = {};
     $self->{db}     = $db;
     $self->{p_fail} = $p_fail;
 
@@ -36,8 +35,6 @@ sub claim_job {
     if (!$uid) {
         return;
     }
-
-    $self->{jobs}{$jid} = $uid;
 
     return App::Job->new(
         db      => $self->{db},

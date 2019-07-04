@@ -191,7 +191,7 @@ sub new {
     my ( $class, %args ) = @_;
     my $config        = delete $args{config};
     my $db            = delete $args{db};
-    my $allocator     = delete $args{allocator};
+    my $job_source    = delete $args{job_source};
     my $dispatcher    = delete $args{dispatcher};
     my $alarms        = delete $args{alarms};
     my $idler         = delete $args{idler};
@@ -214,14 +214,14 @@ sub new {
             return $ENTRY_ACTIONS{$state}->( $self );
         },
     );
-    $self->{config}     = $config;
-    $self->{db}         = $db;
-    $self->{allocator}  = $allocator;
-    $self->{dispatcher} = $dispatcher;
-    $self->{alarms}     = $alarms;
-    $self->{idler}      = $idler;
-    $self->{setup_worker} = $setup_worker,
-    $self->{db_class}   = $db_class,
+    $self->{config}       = $config;
+    $self->{db}           = $db;
+    $self->{job_source}   = $job_source;
+    $self->{dispatcher}   = $dispatcher;
+    $self->{alarms}       = $alarms;
+    $self->{idler}        = $idler;
+    $self->{setup_worker} = $setup_worker;
+    $self->{db_class}     = $db_class;
 
     return $self;
 }
@@ -247,7 +247,7 @@ sub do_run {
         return $I_DONE;
     }
 
-    my $job = $self->{allocator}->claim_job();
+    my $job = $self->{job_source}->claim_job();
     if ( !$job ) {
         $log->infof( "no jobs" );
         return $I_DONE;
@@ -276,7 +276,7 @@ sub do_run {
         return $I_DONE;
     }
 
-    $log->infof( "job(%s:%s) allocated, worker(%s) spawned", $job->item_id, $job->job_id, $pid );
+    $log->infof( "job(%s:%s) claimed, worker(%s) spawned", $job->item_id, $job->job_id, $pid );
     $self->{alarms}->add_timeout( $self->{config}->timeout() );
 
     return;

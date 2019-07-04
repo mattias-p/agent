@@ -81,8 +81,6 @@ TBD
 
 ## Known problems
 
-* The code around the Allocator and Job should be cleaned up.
-
 * The worker processes should be implemented using exec instead of simple function
   calls.
 
