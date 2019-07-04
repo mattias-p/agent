@@ -81,9 +81,6 @@ TBD
 
 ## Known problems
 
-* The worker processes should be implemented using exec instead of simple function
-  calls.
-
 * The Agent violates the Liskov substitution principle by inheriting from FSM and
   then letting its output values depend on external state.
   The Agent chould have an FSM as a member through composition instead.
@@ -97,6 +94,9 @@ TBD
 
 * The logging is getting verbose.
   There should be some filtering.
+
+* The worker processes should inherit the relevant code from the master process,
+  but as little other as possible.
 
 
 [Clean Architecture]: https://www.goodreads.com/book/show/18043011-clean-architecture
