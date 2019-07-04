@@ -286,7 +286,7 @@ sub do_reap {
     my $self = shift;
     my %jobs = $self->{dispatcher}->reap();
     for my $pid ( keys %jobs ) {
-        my ( $job, $severity, $details ) = @{ $jobs{$pid} };
+        my ( $severity, $details, $job ) = @{ $jobs{$pid} };
         my $is_severity = "is_$severity";
         if ( $log->$is_severity() ) {
             my $reason = $self->{dispatcher}->termination_reason($details);
@@ -314,7 +314,7 @@ sub do_timeout {
     my %jobs = $self->{dispatcher}->kill_overdue();
 
     for my $pid ( keys %jobs ) {
-        my ( $job ) = @{ $jobs{$pid} };
+        my $job = $jobs{$pid};
         $log->infof( "overdue worker(%s) killed, releasing job(%s:%s)",
             $pid, $job->item_id, $job->job_id );
         $job->release();
@@ -325,7 +325,7 @@ sub do_timeout {
 
 sub do_grace_idle {
     my $self = shift;
-    if ( $self->{dispatcher}->jobs ) {
+    if ( $self->{dispatcher}->has_live_workers ) {
         $self->do_idle;
         return;
     }
@@ -340,7 +340,7 @@ sub do_shutdown {
     my %jobs = $self->{dispatcher}->shutdown();
 
     for my $pid ( keys %jobs ) {
-        my ( $job, $severity, $details ) = @{ $jobs{$pid} };
+        my ( $severity, $details, $job ) = @{ $jobs{$pid} };
         my $is_severity = "is_$severity";
         if ( $log->$is_severity() ) {
             my $reason = $self->{dispatcher}->termination_reason($details);
