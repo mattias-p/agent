@@ -81,10 +81,6 @@ TBD
 
 ## Known problems
 
-* The Agent violates the Liskov substitution principle by inheriting from FSM and
-  then letting its output values depend on external state.
-  The Agent chould have an FSM as a member through composition instead.
-
 * Take another look at FSM output functions.
   Could the Agent implementation be improved by using a full Moore och Mealy machine?
 

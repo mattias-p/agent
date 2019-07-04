@@ -8,8 +8,6 @@ use FSM::Builder;
 use Log::Any qw( $log );
 use Readonly;
 
-use base 'FSM';
-
 our @EXPORT_OK = qw( cmp_inputs $S_LOAD $S_RUN $S_REAP $S_TIMEOUT $S_IDLE $S_GRACE_REAP $S_GRACE_TIMEOUT $S_GRACE_IDLE $S_SHUTDOWN $S_FINAL $I_STEP $I_DONE $I_CHLD $I_USR2 $I_ALRM $I_HUP $I_TERM $I_EXIT );
 
 Readonly our $S_LOAD          => 'LOAD';
@@ -200,20 +198,8 @@ sub new {
     my $db_class      = delete $args{db_class};
     !%args or confess 'unrecognized arguments';
 
-    my $self;
-    $self = $BUILDER->build(
-        class           => $class,
-        initial_state   => $initial_state,
-        final_states    => [ $S_FINAL ],
-        output_function => sub {
-            my $state = shift;
-            my $input = shift;
+    my $self = bless {}, $class;
 
-            $log->infof( "input(%s) -> state(%s)", $input, $state );
-
-            return $ENTRY_ACTIONS{$state}->( $self );
-        },
-    );
     $self->{config}       = $config;
     $self->{db}           = $db;
     $self->{job_source}   = $job_source;
@@ -222,8 +208,29 @@ sub new {
     $self->{idler}        = $idler;
     $self->{setup_worker} = $setup_worker;
     $self->{db_class}     = $db_class;
+    $self->{fsm}          = $BUILDER->build(
+        initial_state => $initial_state,
+        final_states  => [$S_FINAL],
+    );
 
     return $self;
+}
+
+sub process {
+    my $self = shift;
+    my $input = shift;
+
+    my $state = $self->{fsm}->process( $input );
+
+    $log->infof( "input(%s) -> state(%s)", $input, $state );
+
+    return $ENTRY_ACTIONS{$state}->( $self );
+}
+
+sub is_final {
+    my $self = shift;
+
+    return $self->{fsm}->is_final;
 }
 
 sub do_load {
