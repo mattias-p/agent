@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use feature 'say';
 
-use App::Agent qw( cmp_inputs $I_ALRM $I_CHLD $I_HUP $I_STEP $I_TERM $I_USR2 $S_LOAD );
+use App::Agent qw( cmp_inputs $I_ALRM $I_CHLD $I_HUP $I_STEP $I_TERM $I_USR2 $S_ACTIVE_LOAD );
 use App::JobSource;
 use App::Config;
 use App::DB;
@@ -76,7 +76,7 @@ my $dispatcher = Unix::Dispatcher->new(
     p_fail => 0.0,
 );
 
-my $initial_state = $S_LOAD;
+my $initial_state = $S_ACTIVE_LOAD;
 
 my $idler = Unix::Idler->new();
 
