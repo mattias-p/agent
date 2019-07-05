@@ -9,7 +9,6 @@ use DFA::Builder;
 use Log::Any qw( $log );
 use Log::Any::Adapter;
 use Readonly;
-use Unix::Signal qw( install_handler retrieve_caught uninstall_handlers );
 
 our @EXPORT_OK = qw(
   create_dfa
@@ -197,19 +196,23 @@ sub new {
     my $db_class    = delete $args{db_class};
     my $log_adapter = delete $args{log_adapter};
     my $daemonizer  = delete $args{daemonizer};
+    my $signals     = delete $args{signals};
     !%args or confess 'unrecognized arguments';
+
+    my $lifecycle   = create_dfa();
 
     my $self = bless {}, $class;
 
-    $self->{config}      = $config;
-    $self->{job_source}  = $job_source;
-    $self->{dispatcher}  = $dispatcher;
     $self->{alarms}      = $alarms;
-    $self->{idler}       = $idler;
-    $self->{db_class}    = $db_class;
-    $self->{log_adapter} = $log_adapter;
+    $self->{config}      = $config;
     $self->{daemonizer}  = $daemonizer;
-    $self->{lifecycle}   = create_dfa();
+    $self->{db_class}    = $db_class;
+    $self->{dispatcher}  = $dispatcher;
+    $self->{idler}       = $idler;
+    $self->{job_source}  = $job_source;
+    $self->{lifecycle}   = $lifecycle;
+    $self->{log_adapter} = $log_adapter;
+    $self->{signals}     = $signals;
 
     return $self;
 }
@@ -239,23 +242,23 @@ sub run {
 
         $events->insert($_) for @events;
 
-        if ( retrieve_caught('ALRM') ) {
+        if ( $self->{signals}->retrieve_caught('ALRM') ) {
             $log->debug("caught SIGALRM");
             $events->insert($I_EXPIRE);
         }
-        if ( retrieve_caught('CHLD') ) {
+        if ( $self->{signals}->retrieve_caught('CHLD') ) {
             $log->debug("caught SIGCHLD");
             $events->insert($I_REAP);
         }
-        if ( retrieve_caught('TERM') ) {
+        if ( $self->{signals}->retrieve_caught('TERM') ) {
             $log->debug("caught SIGTERM");
             $events->insert($I_END);
         }
-        if ( retrieve_caught('HUP') ) {
+        if ( $self->{signals}->retrieve_caught('HUP') ) {
             $log->debug("caught SIGHUP");
             $events->insert($I_LOAD);
         }
-        if ( retrieve_caught('USR2') ) {
+        if ( $self->{signals}->retrieve_caught('USR2') ) {
             $log->debug("caught SIGUSR2");
             $events->insert($I_SPAWN);
         }
@@ -343,11 +346,11 @@ sub do_setup {
     $self->{job_source}->set_db($db);
 
     $log->info("installing signal handlers");
-    install_handler( 'ALRM' );
-    install_handler( 'CHLD' );
-    install_handler( 'HUP' );
-    install_handler( 'TERM' );
-    install_handler( 'USR2' );
+    $self->{signals}->install_handler( 'ALRM' );
+    $self->{signals}->install_handler( 'CHLD' );
+    $self->{signals}->install_handler( 'HUP' );
+    $self->{signals}->install_handler( 'TERM' );
+    $self->{signals}->install_handler( 'USR2' );
 
     return $I_STEP;
 }
@@ -407,10 +410,10 @@ sub do_spawn {
     my $pid = $self->{dispatcher}->spawn(
         $job,
         sub {
+            $self->{signals}->uninstall_handlers();
             my $config   = $self->{config};
             my $db_class = $self->{db_class};
             $self->forget_everyting();
-            uninstall_handlers();
             srand($$);
 
             my $db = $db_class->connect( config => $config );

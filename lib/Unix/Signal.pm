@@ -9,7 +9,16 @@ our @EXPORT_OK = qw( install_handler uninstall_handlers retrieve_caught );
 
 my %CAUGHT;
 
+sub new {
+    my $class = shift;
+
+    my $self = bless {}, $class;
+
+    return $self;
+}
+
 sub install_handler {
+    my $class   = shift;
     my $signame = shift;
 
     $SIG{$signame} = \&catch;
@@ -37,6 +46,7 @@ sub catch {
 }
 
 sub retrieve_caught {
+    my $class   = shift;
     my $signame = shift;
 
     if ( $CAUGHT{$signame} ) {

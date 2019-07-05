@@ -14,6 +14,7 @@ use Readonly;
 use Unix::AlarmQueue;
 use Unix::Dispatcher;
 use Unix::Idler;
+use Unix::Signal;
 
 # Inject some new jobs in the job source
 {
@@ -63,15 +64,18 @@ my $agent = do {
         p_fail => 0.0,
     );
 
+    my $signals = Unix::Signal->new();
+
     App::Agent->new(
         alarms       => $alarms,
-        job_source   => $job_source,
+        config       => $config,
+        daemonizer   => $daemonizer,
+        db_class     => 'App::DB',
         dispatcher   => $dispatcher,
         idler        => $idler,
+        job_source   => $job_source,
         log_adapter  => $log_adapter,
-        db_class     => 'App::DB',
-        daemonizer   => $daemonizer,
-        config       => $config,
+        signals      => $signals,
     );
 };
 
