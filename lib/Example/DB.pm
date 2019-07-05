@@ -1,4 +1,4 @@
-package App::DB;
+package Example::DB;
 use strict;
 use warnings;
 

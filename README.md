@@ -84,8 +84,6 @@ TBD
 * The logging is getting verbose.
   There should be some filtering.
 
-* Place Config, JobSource and Job under Example namespace.
-
 * Make all non-example module independent of all example modules.
 
 

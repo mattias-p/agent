@@ -1,4 +1,4 @@
-package App::Job;
+package Example::Job;
 use strict;
 use warnings;
 
@@ -35,6 +35,15 @@ sub item_id {
     my $self = shift;
 
     return $self->{item_id};
+}
+
+sub set_db {
+    my $self = shift;
+    my $db   = shift;
+
+    $self->{db} = $db;
+
+    return;
 }
 
 sub run {

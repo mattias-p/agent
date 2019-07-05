@@ -3,12 +3,12 @@ use strict;
 use warnings;
 use feature 'say';
 
-use App::Agent;
-use App::JobSource;
-use App::Config;
-use App::DB;
+use Agent;
 use Cwd;
 use Daemonizer;
+use Example::Config;
+use Example::DB;
+use Example::JobSource;
 use File::Spec;
 use Readonly;
 use Unix::AlarmQueue;
@@ -18,14 +18,14 @@ use Unix::Signal;
 
 # Inject some new jobs in the job source
 {
-    my $config = App::Config->new( p_fail => 0.1 );
+    my $config = Example::Config->new( p_fail => 0.1 );
 
     if ( !$config->load() ) {
         say STDERR "Failed to load config";
         exit 1;
     }
 
-    my $db = App::DB->connect( config => $config );
+    my $db = Example::DB->connect( config => $config );
 
     for (1..10) {
         $db->unit_new();
@@ -41,7 +41,7 @@ my $agent = do {
 
     my $log_adapter = [ 'File', $log_file ];
 
-    my $config = App::Config->new(
+    my $config = Example::Config->new(
         p_fail => 0.1,
     );
 
@@ -60,17 +60,17 @@ my $agent = do {
 
     my $idler = Unix::Idler->new();
 
-    my $job_source = App::JobSource->new(
+    my $job_source = Example::JobSource->new(
         p_fail => 0.0,
     );
 
     my $signals = Unix::Signal->new();
 
-    App::Agent->new(
+    Agent->new(
         alarms       => $alarms,
         config       => $config,
         daemonizer   => $daemonizer,
-        db_class     => 'App::DB',
+        db_class     => 'Example::DB',
         dispatcher   => $dispatcher,
         idler        => $idler,
         job_source   => $job_source,

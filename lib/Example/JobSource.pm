@@ -1,8 +1,8 @@
-package App::JobSource;
+package Example::JobSource;
 use strict;
 use warnings;
 
-use App::Job;
+use Example::Job;
 use Carp qw( confess );
 use Log::Any qw( $log );
 
@@ -36,7 +36,7 @@ sub claim_job {
         return;
     }
 
-    return App::Job->new(
+    return Example::Job->new(
         db      => $self->{db},
         job_id  => $jid,
         item_id => $uid,

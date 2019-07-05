@@ -1,4 +1,4 @@
-package App::Config;
+package Example::Config;
 use strict;
 use warnings;
 

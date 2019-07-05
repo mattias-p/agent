@@ -1,4 +1,4 @@
-package App::Agent;
+package Agent;
 use strict;
 use warnings;
 
@@ -417,11 +417,7 @@ sub do_spawn {
             srand($$);
 
             my $db = $db_class->connect( config => $config );
-            my $job = App::Job->new(
-                db      => $db,
-                job_id  => $job->job_id,
-                item_id => $job->item_id,
-            );
+            $job->set_db($db);
 
             $log->infof( "job(%s:%s) starting work",
                 $job->item_id, $job->job_id );
