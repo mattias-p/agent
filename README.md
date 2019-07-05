@@ -84,5 +84,8 @@ TBD
 * The logging is getting verbose.
   There should be some filtering.
 
+* Exceptions in entry actions should be caught and logged.
+  They should also make the DFA end up in the final error state.
+
 
 [Clean Architecture]: https://www.goodreads.com/book/show/18043011-clean-architecture

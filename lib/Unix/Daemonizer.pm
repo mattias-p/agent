@@ -1,4 +1,4 @@
-package Daemonizer;
+package Unix::Daemonizer;
 use strict;
 use warnings;
 

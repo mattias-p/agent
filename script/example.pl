@@ -5,25 +5,25 @@ use feature 'say';
 
 use Agent;
 use Cwd;
-use Daemonizer;
 use Example::ConfigLoader;
 use Example::DB;
 use Example::JobSource;
 use File::Spec;
 use Readonly;
 use Unix::AlarmQueue;
+use Unix::Daemonizer;
 use Unix::Dispatcher;
 use Unix::Idler;
 use Unix::Signal;
 
 my $agent = do {
-    Readonly my $pid_file    => File::Spec->catfile( getcwd, 'agent.pid' );
-    Readonly my $out_file    => File::Spec->catfile( getcwd, 'agent.out' );
-    Readonly my $log_file    => File::Spec->catfile( getcwd, 'agent.log' );
-    Readonly my $config_file => File::Spec->catfile( getcwd, 'agent.conf' );
+    Readonly my $pid_file    => File::Spec->catfile( getcwd, 'example.pid' );
+    Readonly my $out_file    => File::Spec->catfile( getcwd, 'example.out' );
+    Readonly my $log_file    => File::Spec->catfile( getcwd, 'example.log' );
+    Readonly my $config_file => File::Spec->catfile( getcwd, 'example.conf' );
 
     my $config_loader = Example::ConfigLoader->new(
-        p_fail    => 0.1,
+        p_fail      => 0.1,
         config_file => $config_file,
     );
 
@@ -40,9 +40,11 @@ my $agent = do {
         }
     }
 
+    my $db_class = 'Example::DB';
+
     my $log_adapter = [ 'File', $log_file ];
 
-    my $daemonizer = Daemonizer->new(
+    my $daemonizer = Unix::Daemonizer->new(
         work_dir => getcwd,
         pid_file => $pid_file,
         out_file => $out_file,
@@ -66,7 +68,7 @@ my $agent = do {
         alarms        => $alarms,
         config_loader => $config_loader,
         daemonizer    => $daemonizer,
-        db_class      => 'Example::DB',
+        db_class      => $db_class,
         dispatcher    => $dispatcher,
         idler         => $idler,
         job_source    => $job_source,
