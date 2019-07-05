@@ -84,8 +84,8 @@ sub spawn {
         return;
     }
     if ( $pid == 0 ) {
-        $action->();
-        exit 0;
+        my $exitstatus = $action->();
+        exit( $exitstatus || 2 );
     }
     my $deadline = $now + $self->{timeout};
     $self->{jobs}{$pid} = [ $deadline, $data ];

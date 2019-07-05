@@ -454,11 +454,12 @@ sub do_spawn {
                 $log->infof( "job(%s:%s) completed work, releasing it",
                     $job->item_id, $job->job_id );
                 $job->release();
+                return 0;
             };
             if ($@) {
                 $log->criticalf('job(%s:%s) threw exception: %s', $job->item_id, $job->job_id, $@ );
+                return 1;
             }
-            return;
         }
     );
     if ( !$pid ) {

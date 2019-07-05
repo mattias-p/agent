@@ -81,13 +81,24 @@ TBD
 
 ## Known problems
 
-* Exceptions thrown in worker processes should result in non-zero exit status.
-
 * The logging is getting verbose.
   There should be some filtering.
 
 * The DFA specification should be oriented around from-states instead of inputs.
   That should it easier on the reader.
+
+* Getting weird behaviors invoking `confess "derp"`.
+  During some executions of `example.pl`, calls to `confess "derp"` work as
+  expected.
+  During some executions, the same calls consistently generate messages like
+  this:
+
+      [Fri Jul  5 20:02:46 2019] job(1172:13947) threw exception: panic: attempt to copy freed scalar 559fbcc2fe78 to 559fbce580f8 at /usr/share/perl/5.24/Carp.pm line 229.
+
+  During some executions, but more seldom, the same calls consistently generate
+  messages like this:
+
+      [Fri Jul  5 20:05:37 2019] job(1179:13997) threw exception: Bizarre copy of HASH in list assignment at /usr/share/perl/5.24/Carp.pm line 229.
 
 
 [Clean Architecture]: https://www.goodreads.com/book/show/18043011-clean-architecture
