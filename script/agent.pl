@@ -3,13 +3,13 @@ use strict;
 use warnings;
 use feature 'say';
 
-use App::Agent qw( cmp_inputs $I_ALRM $I_CHLD $I_HUP $I_STEP $I_TERM $I_USR2 $S_ACTIVE_LOAD );
+use App::Agent qw( %INPUT_PRIORITIES $I_ALRM $I_CHLD $I_HUP $I_STEP $I_TERM $I_USR2 $S_ACTIVE_LOAD );
 use App::JobSource;
 use App::Config;
 use App::DB;
 use Cwd;
+use EnumSet;
 use File::Spec;
-use Heap::Binary;
 use Log::Any '$log';
 use Log::Any::Adapter;
 use Proc::Daemon;
@@ -99,7 +99,7 @@ my $agent = App::Agent->new(
     db_class      => 'App::DB',
 );
 
-my $events = Heap::Binary->new( \&cmp_inputs );
+my $events = EnumSet->new( sort { $INPUT_PRIORITIES{$a} <=> $INPUT_PRIORITIES{$b} } keys %INPUT_PRIORITIES );
 
 
 Log::Any::Adapter->set( 'File', $log_file );    # reopen after daemonization
@@ -114,7 +114,7 @@ install_handler( 'TERM' );
 install_handler( 'USR2' );
 
 while ( !$agent->is_final ) {
-    my @events = $agent->process( $events->extract_min() // $I_STEP );
+    my @events = $agent->process( $events->pop() // $I_STEP );
 
     $events->insert($_) for @events;
     $events->insert($I_ALRM) if retrieve_caught('ALRM');

@@ -8,7 +8,7 @@ use DFA::Builder;
 use Log::Any qw( $log );
 use Readonly;
 
-our @EXPORT_OK = qw( cmp_inputs $S_ACTIVE_LOAD $S_ACTIVE_RUN $S_ACTIVE_REAP $S_ACTIVE_TIMEOUT $S_ACTIVE_IDLE $S_GRACE_REAP $S_GRACE_TIMEOUT $S_GRACE_IDLE $S_SHUTDOWN $S_FINAL $I_STEP $I_DONE $I_CHLD $I_USR2 $I_ALRM $I_HUP $I_TERM $I_EXIT );
+our @EXPORT_OK = qw( %INPUT_PRIORITIES $S_ACTIVE_LOAD $S_ACTIVE_RUN $S_ACTIVE_REAP $S_ACTIVE_TIMEOUT $S_ACTIVE_IDLE $S_GRACE_REAP $S_GRACE_TIMEOUT $S_GRACE_IDLE $S_SHUTDOWN $S_FINAL $I_STEP $I_DONE $I_CHLD $I_USR2 $I_ALRM $I_HUP $I_TERM $I_EXIT );
 
 Readonly our $S_ACTIVE_LOAD    => 'ACTIVE_LOAD';
 Readonly our $S_ACTIVE_RUN     => 'ACTIVE_RUN';
@@ -175,15 +175,6 @@ $BUILDER->define_input(
         $S_FINAL          => $S_FINAL,
     )
 );
-
-sub cmp_inputs {
-    my ( $a, $b ) = @_;
-
-    ( exists $INPUT_PRIORITIES{$a} && exists $INPUT_PRIORITIES{$b} )
-      or confess 'unrecognized inputs';
-
-    return $INPUT_PRIORITIES{$a} <=> $INPUT_PRIORITIES{$b};
-}
 
 sub new {
     my ( $class, %args ) = @_;

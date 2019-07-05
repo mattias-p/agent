@@ -4,7 +4,6 @@ use warnings;
 
 use Carp qw( confess );
 use Config;
-use Heap::Binary;
 use Log::Any qw( $log );
 use POSIX ":sys_wait_h";
 use Readonly;
