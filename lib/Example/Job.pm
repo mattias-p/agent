@@ -49,6 +49,11 @@ sub set_db {
 sub run {
     my ( $self ) = @_;
 
+    if ( rand() < 0.5 ) {
+        $log->info("just about to derp");
+        confess "derp";
+    }
+
     my $t = 5 + rand(11);
     $log->infof( "job(%d:%d) pretending to work for %0.2fs", $self->{item_id}, $self->{job_id}, $t );
     sleep($t);               # pretend to do something

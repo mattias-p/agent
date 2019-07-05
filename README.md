@@ -81,11 +81,10 @@ TBD
 
 ## Known problems
 
+* Exceptions thrown in worker processes should result in non-zero exit status.
+
 * The logging is getting verbose.
   There should be some filtering.
-
-* Exceptions in entry actions should be caught and logged.
-  They should also make the DFA end up in the final error state.
 
 * The DFA specification should be oriented around from-states instead of inputs.
   That should it easier on the reader.

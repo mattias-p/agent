@@ -63,15 +63,34 @@ Readonly my %ENTRY_ACTIONS => (
     $S_FINAL_OK      => \&do_noop,
 );
 
-Readonly our $I_EXPIRE => '0-EXPIRE';
-Readonly our $I_REAP   => '1-REAP';
-Readonly our $I_END    => '2-END';
-Readonly our $I_LOAD   => '3-LOAD';
-Readonly our $I_SPAWN  => '4-SPAWN';
-Readonly our $I_STEP   => '5-STEP';
+Readonly our $I_ERROR  => '0-ERROR';
+Readonly our $I_EXPIRE => '1-EXPIRE';
+Readonly our $I_REAP   => '2-REAP';
+Readonly our $I_END    => '3-END';
+Readonly our $I_LOAD   => '4-LOAD';
+Readonly our $I_SPAWN  => '5-SPAWN';
+Readonly our $I_STEP   => '6-STEP';
 
 sub create_dfa {
     my $builder = DFA::Builder->new();
+
+    $builder->define_input(
+        $I_ERROR => (
+            $S_INIT_START    => $S_FINAL_ERROR,
+            $S_INIT_SETUP    => $S_FINAL_ERROR,
+            $S_ACTIVE_LOAD   => $S_FINAL_ERROR,
+            $S_ACTIVE_REAP   => $S_FINAL_ERROR,
+            $S_ACTIVE_EXPIRE => $S_FINAL_ERROR,
+            $S_ACTIVE_SPAWN  => $S_FINAL_ERROR,
+            $S_ACTIVE_IDLE   => $S_FINAL_ERROR,
+            $S_GRACE_IDLE    => $S_FINAL_ERROR,
+            $S_GRACE_REAP    => $S_FINAL_ERROR,
+            $S_GRACE_EXPIRE  => $S_FINAL_ERROR,
+            $S_SHUTDOWN      => $S_FINAL_ERROR,
+            $S_FINAL_ERROR   => $S_FINAL_ERROR,
+            $S_FINAL_OK      => $S_FINAL_OK,
+        )
+    );
 
     $builder->define_input(
         $I_STEP => (
@@ -237,31 +256,37 @@ sub run {
 
     my $events = EnumSet->new();
 
-    while ( !$self->is_final ) {
-        my @events = $self->process( $events->pop() // $I_STEP );
+    eval {
+        while ( !$self->is_final ) {
+            my @events = $self->process( $events->pop() // $I_STEP );
 
-        $events->insert($_) for @events;
+            $events->insert($_) for @events;
 
-        if ( $self->{signals}->retrieve_caught('ALRM') ) {
-            $log->debug("caught SIGALRM");
-            $events->insert($I_EXPIRE);
+            if ( $self->{signals}->retrieve_caught('ALRM') ) {
+                $log->debug("caught SIGALRM");
+                $events->insert($I_EXPIRE);
+            }
+            if ( $self->{signals}->retrieve_caught('CHLD') ) {
+                $log->debug("caught SIGCHLD");
+                $events->insert($I_REAP);
+            }
+            if ( $self->{signals}->retrieve_caught('TERM') ) {
+                $log->debug("caught SIGTERM");
+                $events->insert($I_END);
+            }
+            if ( $self->{signals}->retrieve_caught('HUP') ) {
+                $log->debug("caught SIGHUP");
+                $events->insert($I_LOAD);
+            }
+            if ( $self->{signals}->retrieve_caught('USR2') ) {
+                $log->debug("caught SIGUSR2");
+                $events->insert($I_SPAWN);
+            }
         }
-        if ( $self->{signals}->retrieve_caught('CHLD') ) {
-            $log->debug("caught SIGCHLD");
-            $events->insert($I_REAP);
-        }
-        if ( $self->{signals}->retrieve_caught('TERM') ) {
-            $log->debug("caught SIGTERM");
-            $events->insert($I_END);
-        }
-        if ( $self->{signals}->retrieve_caught('HUP') ) {
-            $log->debug("caught SIGHUP");
-            $events->insert($I_LOAD);
-        }
-        if ( $self->{signals}->retrieve_caught('USR2') ) {
-            $log->debug("caught SIGUSR2");
-            $events->insert($I_SPAWN);
-        }
+    };
+    if ($@) {
+        $log->criticalf('uncaught exception in agent: %s', $@ );
+        return 2;
     }
 
     if ( $self->state eq $S_FINAL_OK ) {
@@ -271,6 +296,7 @@ sub run {
         return 1;
     }
     else {
+        $log->warn('unexpected final state: %s', $self->state );
         return 2;
     }
 }
@@ -282,7 +308,6 @@ sub process {
     my $state = $self->{lifecycle}->process($input);
 
     $log->infof( "input(%s) -> state(%s)", $input, $state );
-
     return $ENTRY_ACTIONS{$state}->($self);
 }
 
@@ -412,22 +437,27 @@ sub do_spawn {
     my $pid = $self->{dispatcher}->spawn(
         $job,
         sub {
-            $self->{signals}->uninstall_handlers();
-            my $config   = $self->{config};
-            my $db_class = $self->{db_class};
-            $self->forget_everyting();
-            srand($$);
+            eval {
+                $self->{signals}->uninstall_handlers();
+                my $config   = $self->{config};
+                my $db_class = $self->{db_class};
+                $self->forget_everyting();
+                srand($$);
 
-            my $db = $db_class->connect( config => $config );
-            $job->set_db($db);
+                my $db = $db_class->connect( config => $config );
+                $job->set_db($db);
 
-            $log->infof( "job(%s:%s) starting work",
-                $job->item_id, $job->job_id );
-            $job->run();
+                $log->infof( "job(%s:%s) starting work",
+                    $job->item_id, $job->job_id );
+                $job->run();
 
-            $log->infof( "job(%s:%s) completed work, releasing it",
-                $job->item_id, $job->job_id );
-            $job->release();
+                $log->infof( "job(%s:%s) completed work, releasing it",
+                    $job->item_id, $job->job_id );
+                $job->release();
+            };
+            if ($@) {
+                $log->criticalf('job(%s:%s) threw exception: %s', $job->item_id, $job->job_id, $@ );
+            }
             return;
         }
     );
@@ -447,6 +477,7 @@ sub do_spawn {
 
 sub do_reap {
     my $self = shift;
+
     my %jobs = $self->{dispatcher}->reap();
     for my $pid ( keys %jobs ) {
         my ( $severity, $details, $job ) = @{ $jobs{$pid} };
