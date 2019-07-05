@@ -87,5 +87,7 @@ TBD
 * The worker processes should inherit the relevant code from the master process,
   but as little other as possible.
 
+* Agent uses Signals directly.
+
 
 [Clean Architecture]: https://www.goodreads.com/book/show/18043011-clean-architecture

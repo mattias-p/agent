@@ -28,7 +28,7 @@ sub load {
 
     $self->{data} = {
         timeout     => 10,
-        max_workers => 2,
+        max_workers => 1,
         db_data_source => 'dbi:SQLite:dbname=agent.db',
         db_username=>'',
         db_password=>'',

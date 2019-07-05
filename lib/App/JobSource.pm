@@ -43,4 +43,13 @@ sub claim_job {
     );
 }
 
+sub set_db {
+    my $self = shift;
+    my $db   = shift;
+
+    $self->{db} = $db;
+
+    return;
+}
+
 1;

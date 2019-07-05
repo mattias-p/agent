@@ -3,43 +3,27 @@ use strict;
 use warnings;
 use feature 'say';
 
-use App::Agent qw( $I_EXPIRE $I_REAP $I_END $I_LOAD $I_STEP $I_SPAWN $S_ACTIVE_LOAD );
+use App::Agent;
 use App::JobSource;
 use App::Config;
 use App::DB;
 use Cwd;
-use EnumSet;
+use Daemonizer;
 use File::Spec;
-use Log::Any '$log';
-use Log::Any::Adapter;
-use Proc::Daemon;
 use Readonly;
 use Unix::AlarmQueue;
 use Unix::Dispatcher;
 use Unix::Idler;
-use Unix::Signal qw( install_handler retrieve_caught uninstall_handlers );
 
-Readonly my $log_file => File::Spec->catfile( getcwd, 'agent.log' );
-Readonly my $pid_file => File::Spec->catfile( getcwd, 'agent.pid' );
-Readonly my $out_file => File::Spec->catfile( getcwd, 'agent.out' );
-
-Log::Any::Adapter->set( 'File', $log_file );
-
-# to be executed in child processes before any real work takes place
-sub setup_worker {
-    uninstall_handlers();    # reset signal handlers
-    srand($$);               # make sure workers don't all emit identical synthetic errors
-    return;
-}
-
-my $config = App::Config->new( p_fail => 0.1 );
-
-if ( !$config->load() ) {
-    say STDERR "Failed to load config";
-    exit 1;
-}
-
+# Inject some new jobs in the job source
 {
+    my $config = App::Config->new( p_fail => 0.1 );
+
+    if ( !$config->load() ) {
+        say STDERR "Failed to load config";
+        exit 1;
+    }
+
     my $db = App::DB->connect( config => $config );
 
     for (1..10) {
@@ -49,97 +33,48 @@ if ( !$config->load() ) {
     $db->disconnect;
 }
 
-my $daemon = Proc::Daemon->new();
-my $pid    = $daemon->Init(
-    {
-        work_dir     => getcwd,
-        pid_file     => $pid_file,
-        child_STDERR => $out_file,
-        child_STDOUT => $out_file,
-    }
-);
-if ($pid) {
-    say STDERR "Started daemon (pid $pid)";
+my $agent = do {
+    Readonly my $pid_file => File::Spec->catfile( getcwd, 'agent.pid' );
+    Readonly my $out_file => File::Spec->catfile( getcwd, 'agent.out' );
+    Readonly my $log_file => File::Spec->catfile( getcwd, 'agent.log' );
 
-    exit;
-}
-elsif ( !defined $pid ) {
-    say STDERR "Failed to start daemon";
+    my $log_adapter = [ 'File', $log_file ];
 
-    exit 1;
-}
+    my $config = App::Config->new(
+        p_fail => 0.1,
+    );
 
-my $alarms = Unix::AlarmQueue->new();
+    my $daemonizer = Daemonizer->new(
+        work_dir => getcwd,
+        pid_file => $pid_file,
+        out_file => $out_file,
+    );
 
-my $dispatcher = Unix::Dispatcher->new(
-    config => $config,
-    p_fail => 0.0,
-);
+    my $alarms = Unix::AlarmQueue->new();
 
-my $initial_state = $S_ACTIVE_LOAD;
+    my $dispatcher = Unix::Dispatcher->new(
+        config => $config,
+        p_fail => 0.0,
+    );
 
-my $idler = Unix::Idler->new();
+    my $idler = Unix::Idler->new();
 
-my $db = App::DB->connect( config => $config );
+    my $job_source = App::JobSource->new(
+        p_fail => 0.0,
+    );
 
-my $job_source = App::JobSource->new(
-    db     => $db,
-    p_fail => 0.0,
-);
+    App::Agent->new(
+        alarms       => $alarms,
+        job_source   => $job_source,
+        dispatcher   => $dispatcher,
+        idler        => $idler,
+        log_adapter  => $log_adapter,
+        db_class     => 'App::DB',
+        daemonizer   => $daemonizer,
+        config       => $config,
+    );
+};
 
-my $agent = App::Agent->new(
-    initial_state => $initial_state,
-    db            => $db,
-    alarms        => $alarms,
-    job_source    => $job_source,
-    config        => $config,
-    dispatcher    => $dispatcher,
-    idler         => $idler,
-    setup_worker  => \&setup_worker,
-    db_class      => 'App::DB',
-);
+my $exitcode = $agent->run();
 
-my $events = EnumSet->new();
-
-
-Log::Any::Adapter->set( 'File', $log_file );    # reopen after daemonization
-$log->noticef( "***************************", $$ );
-$log->noticef( "Started daemon (pid %s)", $$ );
-$log->noticef( "State(%s)", $initial_state );
-
-install_handler( 'ALRM' );
-install_handler( 'CHLD' );
-install_handler( 'HUP' );
-install_handler( 'TERM' );
-install_handler( 'USR2' );
-
-while ( !$agent->is_final ) {
-    my @events = $agent->process( $events->pop() // $I_STEP );
-
-    $events->insert($_) for @events;
-
-    if ( retrieve_caught('ALRM') ) {
-        $log->debug("caught SIGALRM");
-        $events->insert($I_EXPIRE);
-    }
-    if ( retrieve_caught('CHLD') ) {
-        $log->debug("caught SIGCHLD");
-        $events->insert($I_REAP);
-    }
-    if ( retrieve_caught('TERM') ) {
-        $log->debug("caught SIGTERM");
-        $events->insert($I_END);
-    }
-    if ( retrieve_caught('HUP') ) {
-        $log->debug("caught SIGHUP");
-        $events->insert($I_LOAD);
-    }
-    if ( retrieve_caught('USR2') ) {
-        $log->debug("caught SIGUSR2");
-        $events->insert($I_SPAWN);
-    }
-}
-
-$db->disconnect();
-
-exit 0;
+exit($exitcode);
