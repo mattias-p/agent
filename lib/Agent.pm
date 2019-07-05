@@ -188,7 +188,7 @@ sub create_dfa {
 
 sub new {
     my ( $class, %args ) = @_;
-    my $config      = delete $args{config};
+    my $config_loader      = delete $args{config_loader};
     my $job_source  = delete $args{job_source};
     my $dispatcher  = delete $args{dispatcher};
     my $alarms      = delete $args{alarms};
@@ -204,7 +204,7 @@ sub new {
     my $self = bless {}, $class;
 
     $self->{alarms}      = $alarms;
-    $self->{config}      = $config;
+    $self->{config_loader}      = $config_loader;
     $self->{daemonizer}  = $daemonizer;
     $self->{db_class}    = $db_class;
     $self->{dispatcher}  = $dispatcher;
@@ -305,12 +305,13 @@ sub do_setup {
 
     $log->info("loading config");
 
-    $self->{config}->load();
+    $self->{config} = $self->{config_loader}->load();
 
-    if ( !$self->{config}->is_loaded ) {
+    if ( !$self->{config} ) {
         $log->critical("config loading failed");
         return $I_END;
     }
+    $self->{config}->update_dispatcher( $self->{dispatcher} );
 
     $log->info("testing database connection");
     {
@@ -360,7 +361,7 @@ sub do_load {
 
     $log->info("loading config candidate");
 
-    my $config = $self->{config_class}->load( $self->{config_file} );
+    my $config = $self->{config_loader}->load();
 
     if ( !$config ) {
         if ( !$self->{config} ) {
@@ -386,9 +387,10 @@ sub do_load {
         return $I_STEP;
     }
 
-    $log->info("adopting new config and database connection");
+    $log->info("adopting new configuration file and database connection");
     $self->{config} = $config;
     $self->{job_source}->set_db($db);
+    $self->{config}->update_dispatcher( $self->{dispatcher} );
 
     return $I_STEP;
 }
@@ -396,8 +398,8 @@ sub do_load {
 sub do_spawn {
     my $self = shift;
 
-    if ( !$self->{dispatcher}->can_spawn_worker ) {
-        $log->warn("no workers");
+    if ( !$self->{dispatcher}->has_available_worker ) {
+        $log->warn("no worker");
         return $I_STEP;
     }
 
@@ -438,7 +440,7 @@ sub do_spawn {
 
     $log->infof( "job(%s:%s) claimed, worker(%s) spawned",
         $job->item_id, $job->job_id, $pid );
-    $self->{alarms}->add_timeout( $self->{config}->timeout() );
+    $self->{alarms}->add_timeout( $self->{dispatcher}->get_timeout() );
 
     return $I_SPAWN;
 }

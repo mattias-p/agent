@@ -13,20 +13,47 @@ Readonly my @SIG_NAMES => ( split ' ', $Config{sig_name} );
 sub new {
     my ( $class, %args ) = @_;
 
-    my $config = delete $args{config};
-    my $p_fail = delete $args{p_fail};
+    my $max_workers = delete $args{max_workers};
+    my $p_fail      = delete $args{p_fail};
+    my $timeout     = delete $args{timeout};
 
     !%args or confess 'unexpected arguments';
 
     $p_fail //= 0.0;
+    my $jobs = {};
 
     my $self = bless {}, $class;
 
-    $self->{jobs}   = {};
-    $self->{p_fail} = $p_fail;
-    $self->{config} = $config;
+    $self->{jobs}        = $jobs;
+    $self->{max_workers} = $max_workers;
+    $self->{p_fail}      = $p_fail;
+    $self->{timeout}     = $timeout;
 
     return $self;
+}
+
+sub set_max_workers {
+    my $self  = shift;
+    my $value = shift;
+
+    $self->{max_workers} = $value;
+
+    return;
+}
+
+sub set_timeout {
+    my $self  = shift;
+    my $value = shift;
+
+    $self->{timeout} = $value;
+
+    return;
+}
+
+sub get_timeout {
+    my $self = shift;
+
+    return $self->{timeout};
 }
 
 sub has_live_workers {
@@ -35,10 +62,10 @@ sub has_live_workers {
     return !!%{ $self->{jobs} };
 }
 
-sub can_spawn_worker {
+sub has_available_worker {
     my $self = shift;
 
-    return scalar keys %{ $self->{jobs} } < $self->{config}->max_workers;
+    return scalar keys %{ $self->{jobs} } < $self->{max_workers};
 }
 
 sub spawn {
@@ -60,7 +87,7 @@ sub spawn {
         $action->();
         exit 0;
     }
-    my $deadline = $now + $self->{config}->timeout();
+    my $deadline = $now + $self->{timeout};
     $self->{jobs}{$pid} = [ $deadline, $data ];
 
     return $pid;

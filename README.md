@@ -84,7 +84,5 @@ TBD
 * The logging is getting verbose.
   There should be some filtering.
 
-* Make all non-example module independent of all example modules.
-
 
 [Clean Architecture]: https://www.goodreads.com/book/show/18043011-clean-architecture

@@ -7,70 +7,62 @@ use Carp qw( confess );
 sub new {
     my ( $class, %args ) = @_;
 
-    my $p_fail = delete $args{p_fail};
-
+    my $dispatcher_timeout     = delete $args{dispatcher_timeout};
+    my $dispatcher_max_workers = delete $args{dispatcher_max_workers};
+    my $db_data_source         = delete $args{db_data_source};
+    my $db_username            = delete $args{db_username};
+    my $db_password            = delete $args{db_password};
     !%args or confess 'unexpected arguments';
 
     my $self = bless {}, $class;
 
-    $self->{p_fail} = $p_fail;
+    $self->{dispatcher_timeout}     = $dispatcher_timeout;
+    $self->{dispatcher_max_workers} = $dispatcher_max_workers;
+    $self->{db_data_source}         = $db_data_source;
+    $self->{db_username}            = $db_username;
+    $self->{db_password}            = $db_password;
 
     return $self;
-}
-
-sub load {
-    my $self = shift;
-
-    if ($self->{p_fail} > 0 && rand() < $self->{p_fail} ) {
-        warn "injected failure";
-        return;
-    }
-
-    $self->{data} = {
-        timeout     => 10,
-        max_workers => 1,
-        db_data_source => 'dbi:SQLite:dbname=agent.db',
-        db_username=>'',
-        db_password=>'',
-    };
-
-    return 1;
-}
-
-sub is_loaded {
-    my $self = shift;
-
-    return exists $self->{data};
 }
 
 sub timeout {
     my $self = shift;
 
-    return $self->{data}{timeout};
+    return $self->{dispatcher_timeout};
 }
 
 sub max_workers {
     my $self = shift;
 
-    return $self->{data}{max_workers};
+    return $self->{dispatcher_max_workers};
 }
 
 sub db_data_source {
     my $self = shift;
 
-    return $self->{data}{db_data_source};
+    return $self->{db_data_source};
 }
 
 sub db_username {
     my $self = shift;
 
-    return $self->{data}{db_username};
+    return $self->{db_username};
 }
 
 sub db_password {
     my $self = shift;
 
-    return $self->{data}{db_password};
+    return $self->{db_password};
+}
+
+sub update_dispatcher {
+    my $self       = shift;
+    my $dispatcher = shift;
+
+    $dispatcher->set_max_workers( $self->max_workers );
+    $dispatcher->set_timeout( $self->timeout );
+
+    return;
 }
 
 1;

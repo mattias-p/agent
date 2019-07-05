@@ -6,7 +6,7 @@ use feature 'say';
 use Agent;
 use Cwd;
 use Daemonizer;
-use Example::Config;
+use Example::ConfigLoader;
 use Example::DB;
 use Example::JobSource;
 use File::Spec;
@@ -16,34 +16,31 @@ use Unix::Dispatcher;
 use Unix::Idler;
 use Unix::Signal;
 
-# Inject some new jobs in the job source
-{
-    my $config = Example::Config->new( p_fail => 0.1 );
-
-    if ( !$config->load() ) {
-        say STDERR "Failed to load config";
-        exit 1;
-    }
-
-    my $db = Example::DB->connect( config => $config );
-
-    for (1..10) {
-        $db->unit_new();
-    }
-
-    $db->disconnect;
-}
-
 my $agent = do {
-    Readonly my $pid_file => File::Spec->catfile( getcwd, 'agent.pid' );
-    Readonly my $out_file => File::Spec->catfile( getcwd, 'agent.out' );
-    Readonly my $log_file => File::Spec->catfile( getcwd, 'agent.log' );
+    Readonly my $pid_file    => File::Spec->catfile( getcwd, 'agent.pid' );
+    Readonly my $out_file    => File::Spec->catfile( getcwd, 'agent.out' );
+    Readonly my $log_file    => File::Spec->catfile( getcwd, 'agent.log' );
+    Readonly my $config_file => File::Spec->catfile( getcwd, 'agent.conf' );
+
+    my $config_loader = Example::ConfigLoader->new(
+        p_fail    => 0.1,
+        config_file => $config_file,
+    );
+
+    # Inject some new jobs into the job source
+    {
+        if ( my $config = $config_loader->load() ) {
+            my $db = Example::DB->connect( config => $config );
+
+            for ( 1 .. 10 ) {
+                $db->unit_new();
+            }
+
+            $db->disconnect;
+        }
+    }
 
     my $log_adapter = [ 'File', $log_file ];
-
-    my $config = Example::Config->new(
-        p_fail => 0.1,
-    );
 
     my $daemonizer = Daemonizer->new(
         work_dir => getcwd,
@@ -54,7 +51,6 @@ my $agent = do {
     my $alarms = Unix::AlarmQueue->new();
 
     my $dispatcher = Unix::Dispatcher->new(
-        config => $config,
         p_fail => 0.0,
     );
 
@@ -67,15 +63,15 @@ my $agent = do {
     my $signals = Unix::Signal->new();
 
     Agent->new(
-        alarms       => $alarms,
-        config       => $config,
-        daemonizer   => $daemonizer,
-        db_class     => 'Example::DB',
-        dispatcher   => $dispatcher,
-        idler        => $idler,
-        job_source   => $job_source,
-        log_adapter  => $log_adapter,
-        signals      => $signals,
+        alarms        => $alarms,
+        config_loader => $config_loader,
+        daemonizer    => $daemonizer,
+        db_class      => 'Example::DB',
+        dispatcher    => $dispatcher,
+        idler         => $idler,
+        job_source    => $job_source,
+        log_adapter   => $log_adapter,
+        signals       => $signals,
     );
 };
 
