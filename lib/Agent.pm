@@ -455,7 +455,7 @@ sub do_reap {
             my $reason = $self->{dispatcher}->termination_reason($details);
             $log->$severity( "worker($pid) $reason, releasing job("
                   . $job->item_id . ":"
-                  . $job->item_id
+                  . $job->job_id
                   . ")" );
         }
         $job->release();
