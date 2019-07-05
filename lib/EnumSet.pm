@@ -3,24 +3,22 @@ use strict;
 use warnings;
 
 sub new {
-    my ( $class, @symbols ) = @_;
+    my ( $class ) = @_;
 
     my $self = bless {}, $class;
 
-    my $i = 0;
-    $self->{sym_to_ord} = { map { $_ => $i++ } @symbols };
-    $self->{queue} = [];
+    $self->{elements} = [];
 
     return $self;
 }
 
 sub insert {
     my $self  = shift;
-    my $event = shift;
+    my $value = shift;
 
-    my $i = $self->{sym_to_ord}{$event};
+    my $index = ($value =~ s/\D//gr);
 
-    $self->{queue}[$i] = $event;
+    $self->{elements}[$index] = $value;
 
     return;
 }
@@ -28,10 +26,10 @@ sub insert {
 sub pop {
     my $self = shift;
 
-    for my $i ( 0 .. $#{ $self->{queue} } ) {
-        if ( $self->{queue}[$i] ) {
-            my $value = $self->{queue}[$i];
-            undef $self->{queue}[$i];
+    for my $index ( 0 .. $#{ $self->{elements} } ) {
+        if ( $self->{elements}[$index] ) {
+            my $value = $self->{elements}[$index];
+            undef $self->{elements}[$index];
             return $value;
         }
     }

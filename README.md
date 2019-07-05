@@ -81,10 +81,6 @@ TBD
 
 ## Known problems
 
-* Take another look at the event queue for the FSM.
-  Could the backing binary heap be replaced by a fifo or bitset?
-  Does the finite state machine have to be changed to accomodate that?
-
 * The logging is getting verbose.
   There should be some filtering.
 

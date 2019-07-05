@@ -8,171 +8,145 @@ use DFA::Builder;
 use Log::Any qw( $log );
 use Readonly;
 
-our @EXPORT_OK = qw( %INPUT_PRIORITIES $S_ACTIVE_LOAD $S_ACTIVE_RUN $S_ACTIVE_REAP $S_ACTIVE_TIMEOUT $S_ACTIVE_IDLE $S_GRACE_REAP $S_GRACE_TIMEOUT $S_GRACE_IDLE $S_SHUTDOWN $S_FINAL $I_STEP $I_DONE $I_CHLD $I_USR2 $I_ALRM $I_HUP $I_TERM $I_EXIT );
+our @EXPORT_OK = qw(
+  $S_ACTIVE_LOAD
+  $S_ACTIVE_SPAWN
+  $S_ACTIVE_REAP
+  $S_ACTIVE_EXPIRE
+  $S_ACTIVE_IDLE
+  $S_GRACE_REAP
+  $S_GRACE_EXPIRE
+  $S_GRACE_IDLE
+  $S_SHUTDOWN
+  $S_FINAL
+  $I_EXPIRE
+  $I_REAP
+  $I_END
+  $I_LOAD
+  $I_SPAWN
+  $I_STEP
+);
 
-Readonly our $S_ACTIVE_LOAD    => 'ACTIVE_LOAD';
-Readonly our $S_ACTIVE_RUN     => 'ACTIVE_RUN';
-Readonly our $S_ACTIVE_IDLE    => 'ACTIVE_IDLE';
-Readonly our $S_ACTIVE_REAP    => 'ACTIVE_REAP';
-Readonly our $S_ACTIVE_TIMEOUT => 'ACTIVE_TIMEOUT';
-Readonly our $S_GRACE_IDLE     => 'GRACE_IDLE';
-Readonly our $S_GRACE_REAP     => 'GRACE_REAP';
-Readonly our $S_GRACE_TIMEOUT  => 'GRACE_TIMEOUT';
-Readonly our $S_SHUTDOWN       => 'SHUTDOWN';
-Readonly our $S_FINAL          => 'FINAL';
+Readonly our $S_ACTIVE_LOAD   => 'ACTIVE_LOAD';
+Readonly our $S_ACTIVE_SPAWN  => 'ACTIVE_SPAWN';
+Readonly our $S_ACTIVE_IDLE   => 'ACTIVE_IDLE';
+Readonly our $S_ACTIVE_REAP   => 'ACTIVE_REAP';
+Readonly our $S_ACTIVE_EXPIRE => 'ACTIVE_EXPIRE';
+Readonly our $S_GRACE_IDLE    => 'GRACE_IDLE';
+Readonly our $S_GRACE_REAP    => 'GRACE_REAP';
+Readonly our $S_GRACE_EXPIRE  => 'GRACE_EXPIRE';
+Readonly our $S_SHUTDOWN      => 'SHUTDOWN';
+Readonly our $S_FINAL         => 'FINAL';
 
 Readonly my %ENTRY_ACTIONS => (
-    $S_ACTIVE_LOAD    => \&do_load,
-    $S_ACTIVE_RUN     => \&do_run,
-    $S_ACTIVE_REAP    => \&do_reap,
-    $S_ACTIVE_TIMEOUT => \&do_timeout,
-    $S_ACTIVE_IDLE    => \&do_idle,
-    $S_GRACE_REAP     => \&do_reap,
-    $S_GRACE_TIMEOUT  => \&do_timeout,
-    $S_GRACE_IDLE     => \&do_grace_idle,
-    $S_SHUTDOWN       => \&do_shutdown,
-    $S_FINAL          => \&do_final,
+    $S_ACTIVE_LOAD   => \&do_load,
+    $S_ACTIVE_SPAWN  => \&do_spawn,
+    $S_ACTIVE_REAP   => \&do_reap,
+    $S_ACTIVE_EXPIRE => \&do_timeout,
+    $S_ACTIVE_IDLE   => \&do_idle,
+    $S_GRACE_REAP    => \&do_reap,
+    $S_GRACE_EXPIRE  => \&do_timeout,
+    $S_GRACE_IDLE    => \&do_grace_idle,
+    $S_SHUTDOWN      => \&do_shutdown,
+    $S_FINAL         => \&do_final,
 );
 
-Readonly our $I_EXIT => 'EXIT';
-Readonly our $I_DONE => 'DONE';
-Readonly our $I_TERM => 'TERM';
-Readonly our $I_CHLD => 'CHLD';
-Readonly our $I_HUP  => 'HUP';
-Readonly our $I_ALRM => 'ALRM';
-Readonly our $I_USR2 => 'USR2';
-Readonly our $I_STEP => 'STEP';
-
-Readonly our %INPUT_PRIORITIES => (
-    $I_EXIT => 0,
-    $I_DONE => 1,
-    $I_TERM => 2,
-    $I_CHLD => 3,
-    $I_ALRM => 4,
-    $I_HUP  => 5,
-    $I_USR2 => 6,
-    $I_STEP => 7,
-);
+Readonly our $I_EXPIRE => '0-EXPIRE';
+Readonly our $I_REAP   => '1-REAP';
+Readonly our $I_END    => '2-END';
+Readonly our $I_LOAD   => '3-LOAD';
+Readonly our $I_SPAWN  => '4-SPAWN';
+Readonly our $I_STEP   => '5-STEP';
 
 Readonly my $BUILDER => DFA::Builder->new();
 
 $BUILDER->define_input(
     $I_STEP => (
-        $S_ACTIVE_RUN     => $S_ACTIVE_RUN,
-        $S_ACTIVE_IDLE    => $S_ACTIVE_RUN,
-        $S_ACTIVE_LOAD    => $S_ACTIVE_RUN,
-        $S_ACTIVE_REAP    => $S_ACTIVE_RUN,
-        $S_ACTIVE_TIMEOUT => $S_ACTIVE_RUN,
-        $S_GRACE_IDLE     => $S_GRACE_IDLE,
-        $S_GRACE_REAP     => $S_GRACE_IDLE,
-        $S_GRACE_TIMEOUT  => $S_GRACE_IDLE,
-        $S_SHUTDOWN       => $S_SHUTDOWN,
-        $S_FINAL          => $S_FINAL,
+        $S_ACTIVE_LOAD   => $S_ACTIVE_SPAWN,
+        $S_ACTIVE_REAP   => $S_ACTIVE_SPAWN,
+        $S_ACTIVE_EXPIRE => $S_ACTIVE_SPAWN,
+        $S_ACTIVE_SPAWN  => $S_ACTIVE_IDLE,
+        $S_ACTIVE_IDLE   => $S_ACTIVE_IDLE,
+        $S_GRACE_IDLE    => $S_GRACE_IDLE,
+        $S_GRACE_REAP    => $S_GRACE_IDLE,
+        $S_GRACE_EXPIRE  => $S_GRACE_IDLE,
+        $S_SHUTDOWN      => $S_SHUTDOWN,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
 $BUILDER->define_input(
-    $I_DONE => (
-        $S_ACTIVE_RUN     => $S_ACTIVE_IDLE,
-        $S_ACTIVE_IDLE    => $S_ACTIVE_RUN,
-        $S_ACTIVE_LOAD    => $S_ACTIVE_RUN,
-        $S_ACTIVE_REAP    => $S_ACTIVE_RUN,
-        $S_ACTIVE_TIMEOUT => $S_ACTIVE_RUN,
-        $S_GRACE_IDLE     => $S_FINAL,
-        $S_GRACE_REAP     => $S_FINAL,
-        $S_GRACE_TIMEOUT  => $S_FINAL,
-        $S_SHUTDOWN       => $S_FINAL,
-        $S_FINAL          => $S_FINAL,
+    $I_SPAWN => (
+        $S_ACTIVE_LOAD   => $S_ACTIVE_SPAWN,
+        $S_ACTIVE_REAP   => $S_ACTIVE_SPAWN,
+        $S_ACTIVE_EXPIRE => $S_ACTIVE_SPAWN,
+        $S_ACTIVE_SPAWN  => $S_ACTIVE_SPAWN,
+        $S_ACTIVE_IDLE   => $S_ACTIVE_SPAWN,
+        $S_GRACE_IDLE    => $S_GRACE_IDLE,
+        $S_GRACE_REAP    => $S_GRACE_IDLE,
+        $S_GRACE_EXPIRE  => $S_GRACE_IDLE,
+        $S_SHUTDOWN      => $S_SHUTDOWN,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
 $BUILDER->define_input(
-    $I_CHLD => (
-        $S_ACTIVE_RUN     => $S_ACTIVE_REAP,
-        $S_ACTIVE_IDLE    => $S_ACTIVE_REAP,
-        $S_ACTIVE_LOAD    => $S_ACTIVE_REAP,
-        $S_ACTIVE_REAP    => $S_ACTIVE_REAP,
-        $S_ACTIVE_TIMEOUT => $S_ACTIVE_REAP,
-        $S_GRACE_IDLE     => $S_GRACE_REAP,
-        $S_GRACE_REAP     => $S_GRACE_REAP,
-        $S_GRACE_TIMEOUT  => $S_GRACE_REAP,
-        $S_SHUTDOWN       => $S_SHUTDOWN,
-        $S_FINAL          => $S_FINAL,
+    $I_REAP => (
+        $S_ACTIVE_LOAD   => $S_ACTIVE_REAP,
+        $S_ACTIVE_REAP   => $S_ACTIVE_REAP,
+        $S_ACTIVE_EXPIRE => $S_ACTIVE_REAP,
+        $S_ACTIVE_SPAWN  => $S_ACTIVE_REAP,
+        $S_ACTIVE_IDLE   => $S_ACTIVE_REAP,
+        $S_GRACE_IDLE    => $S_GRACE_REAP,
+        $S_GRACE_REAP    => $S_GRACE_REAP,
+        $S_GRACE_EXPIRE  => $S_GRACE_REAP,
+        $S_SHUTDOWN      => $S_SHUTDOWN,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
 $BUILDER->define_input(
-    $I_ALRM => (
-        $S_ACTIVE_RUN     => $S_ACTIVE_TIMEOUT,
-        $S_ACTIVE_IDLE    => $S_ACTIVE_TIMEOUT,
-        $S_ACTIVE_LOAD    => $S_ACTIVE_TIMEOUT,
-        $S_ACTIVE_REAP    => $S_ACTIVE_TIMEOUT,
-        $S_ACTIVE_TIMEOUT => $S_ACTIVE_TIMEOUT,
-        $S_GRACE_IDLE     => $S_GRACE_TIMEOUT,
-        $S_GRACE_REAP     => $S_GRACE_TIMEOUT,
-        $S_GRACE_TIMEOUT  => $S_GRACE_TIMEOUT,
-        $S_SHUTDOWN       => $S_SHUTDOWN,
-        $S_FINAL          => $S_FINAL,
+    $I_EXPIRE => (
+        $S_ACTIVE_LOAD   => $S_ACTIVE_EXPIRE,
+        $S_ACTIVE_REAP   => $S_ACTIVE_EXPIRE,
+        $S_ACTIVE_EXPIRE => $S_ACTIVE_EXPIRE,
+        $S_ACTIVE_SPAWN  => $S_ACTIVE_EXPIRE,
+        $S_ACTIVE_IDLE   => $S_ACTIVE_EXPIRE,
+        $S_GRACE_IDLE    => $S_GRACE_EXPIRE,
+        $S_GRACE_REAP    => $S_GRACE_EXPIRE,
+        $S_GRACE_EXPIRE  => $S_GRACE_EXPIRE,
+        $S_SHUTDOWN      => $S_SHUTDOWN,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
 $BUILDER->define_input(
-    $I_USR2 => (
-        $S_ACTIVE_RUN     => $S_ACTIVE_RUN,
-        $S_ACTIVE_IDLE    => $S_ACTIVE_RUN,
-        $S_ACTIVE_LOAD    => $S_ACTIVE_RUN,
-        $S_ACTIVE_REAP    => $S_ACTIVE_RUN,
-        $S_ACTIVE_TIMEOUT => $S_ACTIVE_RUN,
-        $S_GRACE_IDLE     => $S_GRACE_IDLE,
-        $S_GRACE_REAP     => $S_GRACE_IDLE,
-        $S_GRACE_TIMEOUT  => $S_GRACE_IDLE,
-        $S_SHUTDOWN       => $S_SHUTDOWN,
-        $S_FINAL          => $S_FINAL,
+    $I_LOAD => (
+        $S_ACTIVE_LOAD   => $S_ACTIVE_LOAD,
+        $S_ACTIVE_REAP   => $S_ACTIVE_LOAD,
+        $S_ACTIVE_EXPIRE => $S_ACTIVE_LOAD,
+        $S_ACTIVE_SPAWN  => $S_ACTIVE_LOAD,
+        $S_ACTIVE_IDLE   => $S_ACTIVE_LOAD,
+        $S_GRACE_IDLE    => $S_GRACE_IDLE,
+        $S_GRACE_REAP    => $S_GRACE_IDLE,
+        $S_GRACE_EXPIRE  => $S_GRACE_IDLE,
+        $S_SHUTDOWN      => $S_SHUTDOWN,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
 $BUILDER->define_input(
-    $I_HUP => (
-        $S_ACTIVE_RUN     => $S_ACTIVE_LOAD,
-        $S_ACTIVE_IDLE    => $S_ACTIVE_LOAD,
-        $S_ACTIVE_LOAD    => $S_ACTIVE_LOAD,
-        $S_ACTIVE_REAP    => $S_ACTIVE_LOAD,
-        $S_ACTIVE_TIMEOUT => $S_ACTIVE_LOAD,
-        $S_GRACE_IDLE     => $S_GRACE_IDLE,
-        $S_GRACE_REAP     => $S_GRACE_IDLE,
-        $S_GRACE_TIMEOUT  => $S_GRACE_IDLE,
-        $S_SHUTDOWN       => $S_SHUTDOWN,
-        $S_FINAL          => $S_FINAL,
-    )
-);
-
-$BUILDER->define_input(
-    $I_TERM => (
-        $S_ACTIVE_RUN     => $S_GRACE_IDLE,
-        $S_ACTIVE_IDLE    => $S_GRACE_IDLE,
-        $S_ACTIVE_LOAD    => $S_GRACE_IDLE,
-        $S_ACTIVE_REAP    => $S_GRACE_IDLE,
-        $S_ACTIVE_TIMEOUT => $S_GRACE_IDLE,
-        $S_GRACE_IDLE     => $S_SHUTDOWN,
-        $S_GRACE_REAP     => $S_SHUTDOWN,
-        $S_GRACE_TIMEOUT  => $S_SHUTDOWN,
-        $S_SHUTDOWN       => $S_FINAL,
-        $S_FINAL          => $S_FINAL,
-    )
-);
-
-$BUILDER->define_input(
-    $I_EXIT => (
-        $S_ACTIVE_RUN,    => $S_SHUTDOWN,
-        $S_ACTIVE_IDLE,   => $S_SHUTDOWN,
-        $S_ACTIVE_LOAD    => $S_SHUTDOWN,
-        $S_ACTIVE_REAP,   => $S_SHUTDOWN,
-        $S_ACTIVE_TIMEOUT => $S_SHUTDOWN,
-        $S_GRACE_IDLE     => $S_SHUTDOWN,
-        $S_GRACE_REAP     => $S_SHUTDOWN,
-        $S_GRACE_TIMEOUT  => $S_SHUTDOWN,
-        $S_SHUTDOWN       => $S_FINAL,
-        $S_FINAL          => $S_FINAL,
+    $I_END => (
+        $S_ACTIVE_LOAD   => $S_ACTIVE_SPAWN,
+        $S_ACTIVE_REAP   => $S_GRACE_IDLE,
+        $S_ACTIVE_EXPIRE => $S_GRACE_IDLE,
+        $S_ACTIVE_SPAWN  => $S_GRACE_IDLE,
+        $S_ACTIVE_IDLE   => $S_GRACE_IDLE,
+        $S_GRACE_IDLE    => $S_SHUTDOWN,
+        $S_GRACE_REAP    => $S_SHUTDOWN,
+        $S_GRACE_EXPIRE  => $S_SHUTDOWN,
+        $S_SHUTDOWN      => $S_FINAL,
+        $S_FINAL         => $S_FINAL,
     )
 );
 
@@ -229,26 +203,26 @@ sub do_load {
 
     if ( $self->{config}->load() ) {
         $log->info("config loaded");
-        return $I_DONE;
+        return $I_STEP;
     }
     else {
         $log->warn("config loading failed, keeping old config");
-        return ( $self->{config}->is_loaded() ) ? () : $I_EXIT;
+        return ( $self->{config}->is_loaded() ) ? $I_STEP : $I_END;
     }
 }
 
-sub do_run {
+sub do_spawn {
     my $self = shift;
 
     if ( !$self->{dispatcher}->can_spawn_worker ) {
-        $log->warn("cannot spawn worker");
-        return $I_DONE;
+        $log->warn("no workers");
+        return $I_STEP;
     }
 
     my $job = $self->{job_source}->claim_job();
     if ( !$job ) {
         $log->infof("no jobs");
-        return $I_DONE;
+        return $I_STEP;
     }
 
     my $pid = $self->{dispatcher}->spawn(
@@ -276,14 +250,14 @@ sub do_run {
         $log->infof( "job(%s:%s) spawning worker failed, releasing job",
             $job->item_id, $job->job_id );
         $job->release();
-        return $I_DONE;
+        return $I_SPAWN;
     }
 
     $log->infof( "job(%s:%s) claimed, worker(%s) spawned",
         $job->item_id, $job->job_id, $pid );
     $self->{alarms}->add_timeout( $self->{config}->timeout() );
 
-    return;
+    return $I_SPAWN;
 }
 
 sub do_reap {
@@ -301,13 +275,13 @@ sub do_reap {
         }
         $job->release();
     }
-    return;
+    return $I_STEP;
 }
 
 sub do_idle {
     my $self = shift;
     $self->{idler}->idle();
-    return;
+    return $I_STEP;
 }
 
 sub do_timeout {
@@ -324,17 +298,17 @@ sub do_timeout {
         $job->release();
     }
 
-    return;
+    return $I_STEP;
 }
 
 sub do_grace_idle {
     my $self = shift;
     if ( $self->{dispatcher}->has_live_workers ) {
         $self->do_idle;
-        return;
+        return $I_STEP;
     }
     else {
-        return $I_DONE;
+        return $I_END;
     }
 }
 
@@ -355,11 +329,11 @@ sub do_shutdown {
         }
         $job->release();
     }
-    return $I_DONE;
+    return $I_END;
 }
 
 sub do_final {
-    return;
+    return $I_END;
 }
 
 1;

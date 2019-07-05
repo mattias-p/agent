@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use feature 'say';
 
-use App::Agent qw( %INPUT_PRIORITIES $I_ALRM $I_CHLD $I_HUP $I_STEP $I_TERM $I_USR2 $S_ACTIVE_LOAD );
+use App::Agent qw( $I_EXPIRE $I_REAP $I_END $I_LOAD $I_STEP $I_SPAWN $S_ACTIVE_LOAD );
 use App::JobSource;
 use App::Config;
 use App::DB;
@@ -99,7 +99,7 @@ my $agent = App::Agent->new(
     db_class      => 'App::DB',
 );
 
-my $events = EnumSet->new( sort { $INPUT_PRIORITIES{$a} <=> $INPUT_PRIORITIES{$b} } keys %INPUT_PRIORITIES );
+my $events = EnumSet->new();
 
 
 Log::Any::Adapter->set( 'File', $log_file );    # reopen after daemonization
@@ -117,11 +117,27 @@ while ( !$agent->is_final ) {
     my @events = $agent->process( $events->pop() // $I_STEP );
 
     $events->insert($_) for @events;
-    $events->insert($I_ALRM) if retrieve_caught('ALRM');
-    $events->insert($I_CHLD) if retrieve_caught('CHLD');
-    $events->insert($I_HUP)  if retrieve_caught('HUP');
-    $events->insert($I_TERM) if retrieve_caught('TERM');
-    $events->insert($I_USR2) if retrieve_caught('USR2');
+
+    if ( retrieve_caught('ALRM') ) {
+        $log->debug("caught SIGALRM");
+        $events->insert($I_EXPIRE);
+    }
+    if ( retrieve_caught('CHLD') ) {
+        $log->debug("caught SIGCHLD");
+        $events->insert($I_REAP);
+    }
+    if ( retrieve_caught('TERM') ) {
+        $log->debug("caught SIGTERM");
+        $events->insert($I_END);
+    }
+    if ( retrieve_caught('HUP') ) {
+        $log->debug("caught SIGHUP");
+        $events->insert($I_LOAD);
+    }
+    if ( retrieve_caught('USR2') ) {
+        $log->debug("caught SIGUSR2");
+        $events->insert($I_SPAWN);
+    }
 }
 
 $db->disconnect();
