@@ -87,5 +87,8 @@ TBD
 * Exceptions in entry actions should be caught and logged.
   They should also make the DFA end up in the final error state.
 
+* The DFA specification should be oriented around from-states instead of inputs.
+  That should it easier on the reader.
+
 
 [Clean Architecture]: https://www.goodreads.com/book/show/18043011-clean-architecture
