@@ -12,6 +12,7 @@ use Readonly;
 use Unix::Signal qw( install_handler retrieve_caught uninstall_handlers );
 
 our @EXPORT_OK = qw(
+  create_dfa
   $S_INIT_START
   $S_INIT_SETUP
   $S_ACTIVE_LOAD
@@ -70,115 +71,121 @@ Readonly our $I_LOAD   => '3-LOAD';
 Readonly our $I_SPAWN  => '4-SPAWN';
 Readonly our $I_STEP   => '5-STEP';
 
-Readonly my $BUILDER => DFA::Builder->new();
+sub create_dfa {
+    my $builder = DFA::Builder->new();
 
-$BUILDER->define_input(
-    $I_STEP => (
-        $S_INIT_START    => $S_INIT_SETUP,
-        $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_LOAD   => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_REAP   => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_EXPIRE => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_SPAWN  => $S_ACTIVE_IDLE,
-        $S_ACTIVE_IDLE   => $S_ACTIVE_IDLE,
-        $S_GRACE_IDLE    => $S_GRACE_IDLE,
-        $S_GRACE_REAP    => $S_GRACE_IDLE,
-        $S_GRACE_EXPIRE  => $S_GRACE_IDLE,
-        $S_SHUTDOWN      => $S_SHUTDOWN,
-        $S_FINAL_ERROR   => $S_FINAL_ERROR,
-        $S_FINAL_OK      => $S_FINAL_OK,
-    )
-);
+    $builder->define_input(
+        $I_STEP => (
+            $S_INIT_START    => $S_INIT_SETUP,
+            $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_LOAD   => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_REAP   => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_EXPIRE => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_SPAWN  => $S_ACTIVE_IDLE,
+            $S_ACTIVE_IDLE   => $S_ACTIVE_IDLE,
+            $S_GRACE_IDLE    => $S_GRACE_IDLE,
+            $S_GRACE_REAP    => $S_GRACE_IDLE,
+            $S_GRACE_EXPIRE  => $S_GRACE_IDLE,
+            $S_SHUTDOWN      => $S_SHUTDOWN,
+            $S_FINAL_ERROR   => $S_FINAL_ERROR,
+            $S_FINAL_OK      => $S_FINAL_OK,
+        )
+    );
 
-$BUILDER->define_input(
-    $I_SPAWN => (
-        $S_INIT_START    => $S_INIT_SETUP,
-        $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_LOAD   => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_REAP   => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_EXPIRE => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_SPAWN  => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_IDLE   => $S_ACTIVE_SPAWN,
-        $S_GRACE_IDLE    => $S_GRACE_IDLE,
-        $S_GRACE_REAP    => $S_GRACE_IDLE,
-        $S_GRACE_EXPIRE  => $S_GRACE_IDLE,
-        $S_SHUTDOWN      => $S_SHUTDOWN,
-        $S_FINAL_ERROR   => $S_FINAL_ERROR,
-        $S_FINAL_OK      => $S_FINAL_OK,
-    )
-);
+    $builder->define_input(
+        $I_SPAWN => (
+            $S_INIT_START    => $S_INIT_SETUP,
+            $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_LOAD   => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_REAP   => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_EXPIRE => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_SPAWN  => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_IDLE   => $S_ACTIVE_SPAWN,
+            $S_GRACE_IDLE    => $S_GRACE_IDLE,
+            $S_GRACE_REAP    => $S_GRACE_IDLE,
+            $S_GRACE_EXPIRE  => $S_GRACE_IDLE,
+            $S_SHUTDOWN      => $S_SHUTDOWN,
+            $S_FINAL_ERROR   => $S_FINAL_ERROR,
+            $S_FINAL_OK      => $S_FINAL_OK,
+        )
+    );
 
-$BUILDER->define_input(
-    $I_REAP => (
-        $S_INIT_START    => $S_INIT_SETUP,
-        $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_LOAD   => $S_ACTIVE_REAP,
-        $S_ACTIVE_REAP   => $S_ACTIVE_REAP,
-        $S_ACTIVE_EXPIRE => $S_ACTIVE_REAP,
-        $S_ACTIVE_SPAWN  => $S_ACTIVE_REAP,
-        $S_ACTIVE_IDLE   => $S_ACTIVE_REAP,
-        $S_GRACE_IDLE    => $S_GRACE_REAP,
-        $S_GRACE_REAP    => $S_GRACE_REAP,
-        $S_GRACE_EXPIRE  => $S_GRACE_REAP,
-        $S_SHUTDOWN      => $S_SHUTDOWN,
-        $S_FINAL_ERROR   => $S_FINAL_ERROR,
-        $S_FINAL_OK      => $S_FINAL_OK,
-    )
-);
+    $builder->define_input(
+        $I_REAP => (
+            $S_INIT_START    => $S_INIT_SETUP,
+            $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_LOAD   => $S_ACTIVE_REAP,
+            $S_ACTIVE_REAP   => $S_ACTIVE_REAP,
+            $S_ACTIVE_EXPIRE => $S_ACTIVE_REAP,
+            $S_ACTIVE_SPAWN  => $S_ACTIVE_REAP,
+            $S_ACTIVE_IDLE   => $S_ACTIVE_REAP,
+            $S_GRACE_IDLE    => $S_GRACE_REAP,
+            $S_GRACE_REAP    => $S_GRACE_REAP,
+            $S_GRACE_EXPIRE  => $S_GRACE_REAP,
+            $S_SHUTDOWN      => $S_SHUTDOWN,
+            $S_FINAL_ERROR   => $S_FINAL_ERROR,
+            $S_FINAL_OK      => $S_FINAL_OK,
+        )
+    );
 
-$BUILDER->define_input(
-    $I_EXPIRE => (
-        $S_INIT_START    => $S_INIT_SETUP,
-        $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_LOAD   => $S_ACTIVE_EXPIRE,
-        $S_ACTIVE_REAP   => $S_ACTIVE_EXPIRE,
-        $S_ACTIVE_EXPIRE => $S_ACTIVE_EXPIRE,
-        $S_ACTIVE_SPAWN  => $S_ACTIVE_EXPIRE,
-        $S_ACTIVE_IDLE   => $S_ACTIVE_EXPIRE,
-        $S_GRACE_IDLE    => $S_GRACE_EXPIRE,
-        $S_GRACE_REAP    => $S_GRACE_EXPIRE,
-        $S_GRACE_EXPIRE  => $S_GRACE_EXPIRE,
-        $S_SHUTDOWN      => $S_SHUTDOWN,
-        $S_FINAL_ERROR   => $S_FINAL_ERROR,
-        $S_FINAL_OK      => $S_FINAL_OK,
-    )
-);
+    $builder->define_input(
+        $I_EXPIRE => (
+            $S_INIT_START    => $S_INIT_SETUP,
+            $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_LOAD   => $S_ACTIVE_EXPIRE,
+            $S_ACTIVE_REAP   => $S_ACTIVE_EXPIRE,
+            $S_ACTIVE_EXPIRE => $S_ACTIVE_EXPIRE,
+            $S_ACTIVE_SPAWN  => $S_ACTIVE_EXPIRE,
+            $S_ACTIVE_IDLE   => $S_ACTIVE_EXPIRE,
+            $S_GRACE_IDLE    => $S_GRACE_EXPIRE,
+            $S_GRACE_REAP    => $S_GRACE_EXPIRE,
+            $S_GRACE_EXPIRE  => $S_GRACE_EXPIRE,
+            $S_SHUTDOWN      => $S_SHUTDOWN,
+            $S_FINAL_ERROR   => $S_FINAL_ERROR,
+            $S_FINAL_OK      => $S_FINAL_OK,
+        )
+    );
 
-$BUILDER->define_input(
-    $I_LOAD => (
-        $S_INIT_START    => $S_INIT_SETUP,
-        $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_LOAD   => $S_ACTIVE_LOAD,
-        $S_ACTIVE_REAP   => $S_ACTIVE_LOAD,
-        $S_ACTIVE_EXPIRE => $S_ACTIVE_LOAD,
-        $S_ACTIVE_SPAWN  => $S_ACTIVE_LOAD,
-        $S_ACTIVE_IDLE   => $S_ACTIVE_LOAD,
-        $S_GRACE_IDLE    => $S_GRACE_IDLE,
-        $S_GRACE_REAP    => $S_GRACE_IDLE,
-        $S_GRACE_EXPIRE  => $S_GRACE_IDLE,
-        $S_SHUTDOWN      => $S_SHUTDOWN,
-        $S_FINAL_ERROR   => $S_FINAL_ERROR,
-        $S_FINAL_OK      => $S_FINAL_OK,
-    )
-);
+    $builder->define_input(
+        $I_LOAD => (
+            $S_INIT_START    => $S_INIT_SETUP,
+            $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_LOAD   => $S_ACTIVE_LOAD,
+            $S_ACTIVE_REAP   => $S_ACTIVE_LOAD,
+            $S_ACTIVE_EXPIRE => $S_ACTIVE_LOAD,
+            $S_ACTIVE_SPAWN  => $S_ACTIVE_LOAD,
+            $S_ACTIVE_IDLE   => $S_ACTIVE_LOAD,
+            $S_GRACE_IDLE    => $S_GRACE_IDLE,
+            $S_GRACE_REAP    => $S_GRACE_IDLE,
+            $S_GRACE_EXPIRE  => $S_GRACE_IDLE,
+            $S_SHUTDOWN      => $S_SHUTDOWN,
+            $S_FINAL_ERROR   => $S_FINAL_ERROR,
+            $S_FINAL_OK      => $S_FINAL_OK,
+        )
+    );
 
-$BUILDER->define_input(
-    $I_END => (
-        $S_INIT_START    => $S_INIT_SETUP,
-        $S_INIT_SETUP    => $S_FINAL_ERROR,
-        $S_ACTIVE_LOAD   => $S_ACTIVE_SPAWN,
-        $S_ACTIVE_REAP   => $S_GRACE_IDLE,
-        $S_ACTIVE_EXPIRE => $S_GRACE_IDLE,
-        $S_ACTIVE_SPAWN  => $S_GRACE_IDLE,
-        $S_ACTIVE_IDLE   => $S_GRACE_IDLE,
-        $S_GRACE_IDLE    => $S_SHUTDOWN,
-        $S_GRACE_REAP    => $S_SHUTDOWN,
-        $S_GRACE_EXPIRE  => $S_SHUTDOWN,
-        $S_SHUTDOWN      => $S_FINAL_OK,
-        $S_FINAL_ERROR   => $S_FINAL_ERROR,
-        $S_FINAL_OK      => $S_FINAL_OK,
-    )
-);
+    $builder->define_input(
+        $I_END => (
+            $S_INIT_START    => $S_INIT_SETUP,
+            $S_INIT_SETUP    => $S_FINAL_ERROR,
+            $S_ACTIVE_LOAD   => $S_ACTIVE_SPAWN,
+            $S_ACTIVE_REAP   => $S_GRACE_IDLE,
+            $S_ACTIVE_EXPIRE => $S_GRACE_IDLE,
+            $S_ACTIVE_SPAWN  => $S_GRACE_IDLE,
+            $S_ACTIVE_IDLE   => $S_GRACE_IDLE,
+            $S_GRACE_IDLE    => $S_SHUTDOWN,
+            $S_GRACE_REAP    => $S_SHUTDOWN,
+            $S_GRACE_EXPIRE  => $S_SHUTDOWN,
+            $S_SHUTDOWN      => $S_FINAL_OK,
+            $S_FINAL_ERROR   => $S_FINAL_ERROR,
+            $S_FINAL_OK      => $S_FINAL_OK,
+        )
+    );
+    return $builder->build(
+        initial_state => $S_INIT_START,
+        final_states  => [ $S_FINAL_ERROR, $S_FINAL_OK ],
+    );
+}
 
 sub new {
     my ( $class, %args ) = @_;
@@ -202,12 +209,17 @@ sub new {
     $self->{db_class}    = $db_class;
     $self->{log_adapter} = $log_adapter;
     $self->{daemonizer}  = $daemonizer;
-    $self->{lifecycle}   = $BUILDER->build(
-        initial_state => $S_INIT_START,
-        final_states  => [ $S_FINAL_ERROR, $S_FINAL_OK ],
-    );
+    $self->{lifecycle}   = create_dfa();
 
     return $self;
+}
+
+sub forget_everyting {
+    my $self = shift;
+
+    %{$self} = ();
+
+    return;
 }
 
 sub run {
@@ -395,10 +407,13 @@ sub do_spawn {
     my $pid = $self->{dispatcher}->spawn(
         $job,
         sub {
-            uninstall_handlers();    # reset signal handlers
-            srand($$);               # make sure workers don't all emit identical synthetic errors
+            my $config   = $self->{config};
+            my $db_class = $self->{db_class};
+            $self->forget_everyting();
+            uninstall_handlers();
+            srand($$);
 
-            my $db = $self->{db_class}->connect( config => $self->{config} );
+            my $db = $db_class->connect( config => $config );
             my $job = App::Job->new(
                 db      => $db,
                 job_id  => $job->job_id,

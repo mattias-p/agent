@@ -84,10 +84,12 @@ TBD
 * The logging is getting verbose.
   There should be some filtering.
 
-* The worker processes should inherit the relevant code from the master process,
-  but as little other as possible.
-
 * Agent uses Signals directly.
+  Should it?
+
+* Place Config, JobSource and Job under Example namespace.
+
+* Make all non-example module independent of all example modules.
 
 
 [Clean Architecture]: https://www.goodreads.com/book/show/18043011-clean-architecture
