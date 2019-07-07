@@ -32,6 +32,8 @@ my $agent = do {
         if ( my $config = $config_loader->load() ) {
             my $db = Example::DB->connect( config => $config );
 
+            $db->create_schema;
+
             for ( 1 .. 10 ) {
                 $db->unit_new();
             }

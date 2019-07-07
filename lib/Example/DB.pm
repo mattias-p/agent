@@ -49,7 +49,7 @@ sub create_schema {
         qq(
             insert or ignore into `LastClaimId` (rowid, claim_id) values (1, ?)
         )
-    )->execute($FIRST_CLAIM_ID);
+    )->execute($FIRST_CLAIM_ID - 1);
 
     $self->{dbh}->do(
         qq(
@@ -62,7 +62,7 @@ sub create_schema {
         qq(
             insert or ignore into `LastUnitId` (rowid, unit_id) values (1, ?)
         )
-    )->execute($FIRST_UNIT_ID);
+    )->execute($FIRST_UNIT_ID - 1);
 
     $self->{dbh}->do(
         qq(
