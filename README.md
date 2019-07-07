@@ -81,6 +81,12 @@ TBD
 
 ## Known problems
 
+* The implementation should be documented in order to identify weaknesses in the
+  design.
+
+* The implementation should be tested according to the documentation in order to
+  identify weaknesses in the documentation.
+
 * The logging is getting verbose.
   There should be some filtering.
 
