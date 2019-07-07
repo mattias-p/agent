@@ -5,7 +5,7 @@ use warnings;
 use Exporter qw( import );
 use List::Util qw( all );
 
-our @EXPORT_OK = qw( is_arrayref is_coderef is_name is_state_mapping is_transition_mapping );
+our @EXPORT_OK = qw( is_arrayref is_coderef is_name is_state_mapping is_transition_mapping diff_keys left_only right_only );
 
 sub diff_keys {
     my $left  = shift;

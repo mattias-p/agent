@@ -2,7 +2,7 @@ package Agent;
 use strict;
 use warnings;
 
-use Carp qw( confess );
+use Carp qw( confess croak );
 use EnumSet;
 use Exporter qw( import );
 use DFA::Builder;
@@ -50,155 +50,186 @@ Readonly our $S_FINAL_OK      => 'FINAL_OK';
 Readonly my %ENTRY_ACTIONS => (
     $S_INIT_START    => \&do_noop,
     $S_INIT_SETUP    => \&do_setup,
-    $S_ACTIVE_LOAD   => \&do_load,
     $S_ACTIVE_SPAWN  => \&do_spawn,
-    $S_ACTIVE_REAP   => \&do_reap,
-    $S_ACTIVE_EXPIRE => \&do_expire,
     $S_ACTIVE_IDLE   => \&do_idle,
-    $S_GRACE_REAP    => \&do_reap,
-    $S_GRACE_EXPIRE  => \&do_expire,
+    $S_ACTIVE_LOAD   => \&do_load,
+    $S_ACTIVE_EXPIRE => \&do_expire,
+    $S_ACTIVE_REAP   => \&do_reap,
     $S_GRACE_IDLE    => \&do_grace_idle,
+    $S_GRACE_EXPIRE  => \&do_expire,
+    $S_GRACE_REAP    => \&do_reap,
     $S_SHUTDOWN      => \&do_shutdown,
-    $S_FINAL_ERROR   => \&do_noop,
     $S_FINAL_OK      => \&do_noop,
+    $S_FINAL_ERROR   => \&do_noop,
 );
 
 Readonly our $I_ERROR  => '0-ERROR';
-Readonly our $I_EXPIRE => '1-EXPIRE';
-Readonly our $I_REAP   => '2-REAP';
-Readonly our $I_END    => '3-END';
-Readonly our $I_LOAD   => '4-LOAD';
+Readonly our $I_END    => '1-END';
+Readonly our $I_LOAD   => '2-LOAD';
+Readonly our $I_EXPIRE => '3-EXPIRE';
+Readonly our $I_REAP   => '4-REAP';
 Readonly our $I_SPAWN  => '5-SPAWN';
 Readonly our $I_STEP   => '6-STEP';
 
 sub create_dfa {
     my $builder = DFA::Builder->new();
 
-    $builder->define_input(
-        $I_ERROR => (
-            $S_INIT_START    => $S_FINAL_ERROR,
-            $S_INIT_SETUP    => $S_FINAL_ERROR,
-            $S_ACTIVE_LOAD   => $S_FINAL_ERROR,
-            $S_ACTIVE_REAP   => $S_FINAL_ERROR,
-            $S_ACTIVE_EXPIRE => $S_FINAL_ERROR,
-            $S_ACTIVE_SPAWN  => $S_FINAL_ERROR,
-            $S_ACTIVE_IDLE   => $S_FINAL_ERROR,
-            $S_GRACE_IDLE    => $S_FINAL_ERROR,
-            $S_GRACE_REAP    => $S_FINAL_ERROR,
-            $S_GRACE_EXPIRE  => $S_FINAL_ERROR,
-            $S_SHUTDOWN      => $S_FINAL_ERROR,
-            $S_FINAL_ERROR   => $S_FINAL_ERROR,
-            $S_FINAL_OK      => $S_FINAL_OK,
+    $builder->define_state(
+        $S_INIT_START => (
+            $I_ERROR  => $S_FINAL_ERROR,
+            $I_END    => $S_FINAL_OK,
+            $I_LOAD   => $S_INIT_SETUP,
+            $I_EXPIRE => $S_INIT_SETUP,
+            $I_REAP   => $S_INIT_SETUP,
+            $I_STEP   => $S_INIT_SETUP,
+            $I_SPAWN  => $S_INIT_SETUP,
+        ),
+    );
+
+    $builder->define_state(
+        $S_INIT_SETUP => (
+            $I_ERROR  => $S_FINAL_ERROR,
+            $I_END    => $S_FINAL_OK,
+            $I_LOAD   => $S_ACTIVE_SPAWN,
+            $I_EXPIRE => $S_ACTIVE_SPAWN,
+            $I_REAP   => $S_ACTIVE_SPAWN,
+            $I_STEP   => $S_ACTIVE_SPAWN,
+            $I_SPAWN  => $S_ACTIVE_SPAWN,
+        ),
+    );
+
+    $builder->define_state(
+        $S_ACTIVE_SPAWN => (
+            $I_ERROR  => $S_FINAL_ERROR,
+            $I_END    => $S_GRACE_IDLE,
+            $I_LOAD   => $S_ACTIVE_LOAD,
+            $I_EXPIRE => $S_ACTIVE_EXPIRE,
+            $I_REAP   => $S_ACTIVE_REAP,
+            $I_STEP   => $S_ACTIVE_IDLE,
+            $I_SPAWN  => $S_ACTIVE_SPAWN,
+        ),
+    );
+
+    $builder->define_state(
+        $S_ACTIVE_IDLE => (
+            $I_ERROR  => $S_FINAL_ERROR,
+            $I_END    => $S_GRACE_IDLE,
+            $I_LOAD   => $S_ACTIVE_LOAD,
+            $I_EXPIRE => $S_ACTIVE_EXPIRE,
+            $I_REAP   => $S_ACTIVE_REAP,
+            $I_STEP   => $S_ACTIVE_IDLE,
+            $I_SPAWN  => $S_ACTIVE_SPAWN,
         )
     );
 
-    $builder->define_input(
-        $I_STEP => (
-            $S_INIT_START    => $S_INIT_SETUP,
-            $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_LOAD   => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_REAP   => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_EXPIRE => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_SPAWN  => $S_ACTIVE_IDLE,
-            $S_ACTIVE_IDLE   => $S_ACTIVE_IDLE,
-            $S_GRACE_IDLE    => $S_GRACE_IDLE,
-            $S_GRACE_REAP    => $S_GRACE_IDLE,
-            $S_GRACE_EXPIRE  => $S_GRACE_IDLE,
-            $S_SHUTDOWN      => $S_SHUTDOWN,
-            $S_FINAL_ERROR   => $S_FINAL_ERROR,
-            $S_FINAL_OK      => $S_FINAL_OK,
+    $builder->define_state(
+        $S_ACTIVE_LOAD => (
+            $I_ERROR  => $S_FINAL_ERROR,
+            $I_END    => $S_GRACE_IDLE,
+            $I_LOAD   => $S_ACTIVE_LOAD,
+            $I_EXPIRE => $S_ACTIVE_EXPIRE,
+            $I_REAP   => $S_ACTIVE_REAP,
+            $I_STEP   => $S_ACTIVE_SPAWN,
+            $I_SPAWN  => $S_ACTIVE_SPAWN,
         )
     );
 
-    $builder->define_input(
-        $I_SPAWN => (
-            $S_INIT_START    => $S_INIT_SETUP,
-            $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_LOAD   => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_REAP   => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_EXPIRE => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_SPAWN  => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_IDLE   => $S_ACTIVE_SPAWN,
-            $S_GRACE_IDLE    => $S_GRACE_IDLE,
-            $S_GRACE_REAP    => $S_GRACE_IDLE,
-            $S_GRACE_EXPIRE  => $S_GRACE_IDLE,
-            $S_SHUTDOWN      => $S_SHUTDOWN,
-            $S_FINAL_ERROR   => $S_FINAL_ERROR,
-            $S_FINAL_OK      => $S_FINAL_OK,
+    $builder->define_state(
+        $S_ACTIVE_EXPIRE => (
+            $I_ERROR  => $S_FINAL_ERROR,
+            $I_END    => $S_GRACE_IDLE,
+            $I_LOAD   => $S_ACTIVE_LOAD,
+            $I_EXPIRE => $S_ACTIVE_EXPIRE,
+            $I_REAP   => $S_ACTIVE_REAP,
+            $I_STEP   => $S_ACTIVE_SPAWN,
+            $I_SPAWN  => $S_ACTIVE_SPAWN,
+        ),
+    );
+
+    $builder->define_state(
+        $S_ACTIVE_REAP => (
+            $I_ERROR  => $S_FINAL_ERROR,
+            $I_END    => $S_GRACE_IDLE,
+            $I_LOAD   => $S_ACTIVE_LOAD,
+            $I_EXPIRE => $S_ACTIVE_EXPIRE,
+            $I_REAP   => $S_ACTIVE_REAP,
+            $I_STEP   => $S_ACTIVE_SPAWN,
+            $I_SPAWN  => $S_ACTIVE_SPAWN,
+        ),
+    );
+
+    $builder->define_state(
+        $S_GRACE_IDLE => (
+            $I_ERROR  => $S_FINAL_ERROR,
+            $I_END    => $S_SHUTDOWN,
+            $I_LOAD   => $S_GRACE_IDLE,
+            $I_EXPIRE => $S_GRACE_EXPIRE,
+            $I_REAP   => $S_GRACE_REAP,
+            $I_STEP   => $S_GRACE_IDLE,
+            $I_SPAWN  => $S_GRACE_IDLE,
+        ),
+    );
+
+    $builder->define_state(
+        $S_GRACE_REAP => (
+            $I_ERROR  => $S_FINAL_ERROR,
+            $I_END    => $S_SHUTDOWN,
+            $I_LOAD   => $S_GRACE_IDLE,
+            $I_EXPIRE => $S_GRACE_EXPIRE,
+            $I_REAP   => $S_GRACE_REAP,
+            $I_STEP   => $S_GRACE_IDLE,
+            $I_SPAWN  => $S_GRACE_IDLE,
+        ),
+    );
+
+    $builder->define_state(
+        $S_GRACE_EXPIRE => (
+            $I_ERROR  => $S_FINAL_ERROR,
+            $I_END    => $S_SHUTDOWN,
+            $I_LOAD   => $S_GRACE_IDLE,
+            $I_EXPIRE => $S_GRACE_EXPIRE,
+            $I_REAP   => $S_GRACE_REAP,
+            $I_STEP   => $S_GRACE_IDLE,
+            $I_SPAWN  => $S_GRACE_IDLE,
+        ),
+    );
+
+    $builder->define_state(
+        $S_SHUTDOWN => (
+            $I_ERROR  => $S_FINAL_ERROR,
+            $I_END    => $S_FINAL_OK,
+            $I_LOAD   => $S_FINAL_OK,
+            $I_EXPIRE => $S_FINAL_OK,
+            $I_REAP   => $S_FINAL_OK,
+            $I_STEP   => $S_FINAL_OK,
+            $I_SPAWN  => $S_FINAL_OK,
+        ),
+    );
+
+    $builder->define_state(
+        $S_FINAL_OK => (
+            $I_ERROR  => $S_FINAL_OK,
+            $I_END    => $S_FINAL_OK,
+            $I_LOAD   => $S_FINAL_OK,
+            $I_EXPIRE => $S_FINAL_OK,
+            $I_REAP   => $S_FINAL_OK,
+            $I_STEP   => $S_FINAL_OK,
+            $I_SPAWN  => $S_FINAL_OK,
         )
     );
 
-    $builder->define_input(
-        $I_REAP => (
-            $S_INIT_START    => $S_INIT_SETUP,
-            $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_LOAD   => $S_ACTIVE_REAP,
-            $S_ACTIVE_REAP   => $S_ACTIVE_REAP,
-            $S_ACTIVE_EXPIRE => $S_ACTIVE_REAP,
-            $S_ACTIVE_SPAWN  => $S_ACTIVE_REAP,
-            $S_ACTIVE_IDLE   => $S_ACTIVE_REAP,
-            $S_GRACE_IDLE    => $S_GRACE_REAP,
-            $S_GRACE_REAP    => $S_GRACE_REAP,
-            $S_GRACE_EXPIRE  => $S_GRACE_REAP,
-            $S_SHUTDOWN      => $S_SHUTDOWN,
-            $S_FINAL_ERROR   => $S_FINAL_ERROR,
-            $S_FINAL_OK      => $S_FINAL_OK,
-        )
+    $builder->define_state(
+        $S_FINAL_ERROR => (
+            $I_ERROR  => $S_FINAL_ERROR,
+            $I_END    => $S_FINAL_ERROR,
+            $I_LOAD   => $S_FINAL_ERROR,
+            $I_EXPIRE => $S_FINAL_ERROR,
+            $I_REAP   => $S_FINAL_ERROR,
+            $I_STEP   => $S_FINAL_ERROR,
+            $I_SPAWN  => $S_FINAL_ERROR,
+        ),
     );
 
-    $builder->define_input(
-        $I_EXPIRE => (
-            $S_INIT_START    => $S_INIT_SETUP,
-            $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_LOAD   => $S_ACTIVE_EXPIRE,
-            $S_ACTIVE_REAP   => $S_ACTIVE_EXPIRE,
-            $S_ACTIVE_EXPIRE => $S_ACTIVE_EXPIRE,
-            $S_ACTIVE_SPAWN  => $S_ACTIVE_EXPIRE,
-            $S_ACTIVE_IDLE   => $S_ACTIVE_EXPIRE,
-            $S_GRACE_IDLE    => $S_GRACE_EXPIRE,
-            $S_GRACE_REAP    => $S_GRACE_EXPIRE,
-            $S_GRACE_EXPIRE  => $S_GRACE_EXPIRE,
-            $S_SHUTDOWN      => $S_SHUTDOWN,
-            $S_FINAL_ERROR   => $S_FINAL_ERROR,
-            $S_FINAL_OK      => $S_FINAL_OK,
-        )
-    );
-
-    $builder->define_input(
-        $I_LOAD => (
-            $S_INIT_START    => $S_INIT_SETUP,
-            $S_INIT_SETUP    => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_LOAD   => $S_ACTIVE_LOAD,
-            $S_ACTIVE_REAP   => $S_ACTIVE_LOAD,
-            $S_ACTIVE_EXPIRE => $S_ACTIVE_LOAD,
-            $S_ACTIVE_SPAWN  => $S_ACTIVE_LOAD,
-            $S_ACTIVE_IDLE   => $S_ACTIVE_LOAD,
-            $S_GRACE_IDLE    => $S_GRACE_IDLE,
-            $S_GRACE_REAP    => $S_GRACE_IDLE,
-            $S_GRACE_EXPIRE  => $S_GRACE_IDLE,
-            $S_SHUTDOWN      => $S_SHUTDOWN,
-            $S_FINAL_ERROR   => $S_FINAL_ERROR,
-            $S_FINAL_OK      => $S_FINAL_OK,
-        )
-    );
-
-    $builder->define_input(
-        $I_END => (
-            $S_INIT_START    => $S_INIT_SETUP,
-            $S_INIT_SETUP    => $S_FINAL_ERROR,
-            $S_ACTIVE_LOAD   => $S_ACTIVE_SPAWN,
-            $S_ACTIVE_REAP   => $S_GRACE_IDLE,
-            $S_ACTIVE_EXPIRE => $S_GRACE_IDLE,
-            $S_ACTIVE_SPAWN  => $S_GRACE_IDLE,
-            $S_ACTIVE_IDLE   => $S_GRACE_IDLE,
-            $S_GRACE_IDLE    => $S_SHUTDOWN,
-            $S_GRACE_REAP    => $S_SHUTDOWN,
-            $S_GRACE_EXPIRE  => $S_SHUTDOWN,
-            $S_SHUTDOWN      => $S_FINAL_OK,
-            $S_FINAL_ERROR   => $S_FINAL_ERROR,
-            $S_FINAL_OK      => $S_FINAL_OK,
-        )
-    );
     return $builder->build(
         initial_state => $S_INIT_START,
         final_states  => [ $S_FINAL_ERROR, $S_FINAL_OK ],
@@ -330,21 +361,15 @@ sub do_setup {
 
     $log->info("loading config");
 
-    $self->{config} = $self->{config_loader}->load();
+    $self->{config} = $self->{config_loader}->load()
+      or croak "config loading failed";
 
-    if ( !$self->{config} ) {
-        $log->critical("config loading failed");
-        return $I_END;
-    }
     $self->{config}->update_dispatcher( $self->{dispatcher} );
 
     $log->info("testing database connection");
     {
-        my $db = $self->{db_class}->connect( config => $self->{config} );
-        if (!$db) {
-            $log->critical("database connection failed");
-            return $I_END;
-        }
+        my $db = $self->{db_class}->connect( config => $self->{config} )
+          or croak "database connection failed";
         $db->disconnect;
     }
 
@@ -355,20 +380,15 @@ sub do_setup {
         exit 0;  # exit parent process
     }
     elsif ( !defined $pid ) {
-        $log->critical("failed to start daemon");
-
-        return $I_END;
+        croak "failed to start daemon";
     }
 
     # configure logging for daemon process
     Log::Any::Adapter->set( @{ $self->{log_adapter} } );
 
     $log->info("establishing database connection");
-    my $db = $self->{db_class}->connect( config => $self->{config} );
-    if (!$db) {
-        $log->warn("database reconnection failed");
-        return $I_END;
-    }
+    my $db = $self->{db_class}->connect( config => $self->{config} )
+      or croak "database reconnection failed";
     $self->{job_source}->set_db($db);
 
     $log->info("installing signal handlers");
@@ -389,11 +409,6 @@ sub do_load {
     my $config = $self->{config_loader}->load();
 
     if ( !$config ) {
-        if ( !$self->{config} ) {
-            $log->critical("initial config loading failed");
-            return $I_END;
-        }
-
         $log->warn("config loading failed, keeping old config");
         return $I_STEP;
     }
@@ -403,11 +418,6 @@ sub do_load {
     my $db = $self->{db_class}->connect( config => $config );
 
     if (!$db) {
-        if ( !$self->{config} ) {
-            $log->critical("initial database connection failed");
-            return $I_END;
-        }
-
         $log->warn("database connection failed, keeping old config and database connection");
         return $I_STEP;
     }
@@ -546,13 +556,13 @@ sub do_shutdown {
         }
         $job->release();
     }
-    return $I_END;
+    return $I_STEP;
 }
 
 sub do_noop {
     my $self = shift;
 
-    return $I_END;
+    return $I_STEP;
 }
 
 1;

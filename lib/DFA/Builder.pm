@@ -18,16 +18,28 @@ sub new {
     return $self;
 }
 
-sub define_input {
-    my ( $self, $input, %transitions ) = @_;
+sub define_state {
+    my ( $self, $from_state, %transitions ) = @_;
 
-    is_name( $input ) or confess 'argument must be a valid input name: $input';
+    is_name($from_state)
+      or confess 'from_state argument must be a valid input name';
 
-    is_state_mapping( \%transitions ) or confess '%transitions argument must be a valid state mapping';
+    is_state_mapping( \%transitions )
+      or confess '%transitions argument must be a valid state mapping';
 
-    $self->{reference_states} //= \%transitions;
+    $self->{reference_inputs} //= \%transitions;
 
-    $self->{transitions}{$input} = \%transitions;
+    ( !exists $self->{transitions}{$from_state} )
+      or confess 'from-state already defined';
+
+    all { exists $self->{reference_inputs}{$_} } keys %transitions
+      or confess
+      'transitions argument contains one or more unrecognized inputs';
+
+    all { exists $transitions{$_} } keys %{ $self->{reference_inputs} }
+      or confess 'transitions argument is missing one or more inputs';
+
+    $self->{transitions}{$from_state} = \%transitions;
 
     return;
 }
@@ -43,11 +55,6 @@ sub build {
 
     $final_states //= [];
     $class //= 'DFA';
-
-    exists $self->{reference_states} or confess 'no transitions were defined';
-
-    exists $self->{reference_states}{$initial_state} or confess 'unrecognized state specified as initial state';
-    all { exists $self->{reference_states}{$_} } @{ $final_states } or confess 'unrecognized state among final states';
 
     my $fsm = DFA::new(
         $class,

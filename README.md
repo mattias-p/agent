@@ -84,9 +84,6 @@ TBD
 * The logging is getting verbose.
   There should be some filtering.
 
-* The DFA specification should be oriented around from-states instead of inputs.
-  That should it easier on the reader.
-
 * Getting weird behaviors invoking `confess "derp"`.
   During some executions of `example.pl`, calls to `confess "derp"` work as
   expected.

@@ -49,7 +49,7 @@ sub set_db {
 sub run {
     my ( $self ) = @_;
 
-    if ( rand() < 0.5 ) {
+    if ( rand() < 0.1 ) {
         $log->info("just about to derp");
         confess "derp";
     }
