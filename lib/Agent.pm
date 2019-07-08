@@ -3,7 +3,8 @@ use strict;
 use warnings;
 
 use Carp qw( confess croak );
-use EnumSet;
+use DFA;
+use EnumQueue;
 use Exporter qw( import );
 use Log::Any qw( $log );
 use Log::Any::Adapter;
@@ -69,6 +70,8 @@ Readonly our $I_EXPIRE => '3-EXPIRE';
 Readonly our $I_REAP   => '4-REAP';
 Readonly our $I_SPAWN  => '5-SPAWN';
 Readonly our $I_STEP   => '6-STEP';
+Readonly our @ORDERED_INPUTS =>
+  ( $I_ERROR, $I_END, $I_LOAD, $I_EXPIRE, $I_REAP, $I_SPAWN, $I_STEP );
 
 sub create_dfa {
     return DFA->new(
@@ -245,33 +248,34 @@ sub run {
     $log->warnf( "*" x 78, $$ );
     $log->infof( "State(%s)", $self->state );
 
-    my $events = EnumSet->new();
+    my $input_queue = EnumQueue->new( full_ordered_set => \@ORDERED_INPUTS );
 
     eval {
         while ( !$self->is_final ) {
-            my @events = $self->process( $events->pop() // $I_STEP );
+            my $input = $input_queue->poll() // $I_STEP;
+            my @new_inputs = $self->process( $input );
 
-            $events->insert($_) for @events;
+            $input_queue->offer($_) for @new_inputs;
 
             if ( $self->{signals}->retrieve_caught('ALRM') ) {
                 $log->debug("caught SIGALRM");
-                $events->insert($I_EXPIRE);
+                $input_queue->offer($I_EXPIRE);
             }
             if ( $self->{signals}->retrieve_caught('CHLD') ) {
                 $log->debug("caught SIGCHLD");
-                $events->insert($I_REAP);
+                $input_queue->offer($I_REAP);
             }
             if ( $self->{signals}->retrieve_caught('TERM') ) {
                 $log->debug("caught SIGTERM");
-                $events->insert($I_END);
+                $input_queue->offer($I_END);
             }
             if ( $self->{signals}->retrieve_caught('HUP') ) {
                 $log->debug("caught SIGHUP");
-                $events->insert($I_LOAD);
+                $input_queue->offer($I_LOAD);
             }
             if ( $self->{signals}->retrieve_caught('USR2') ) {
                 $log->debug("caught SIGUSR2");
-                $events->insert($I_SPAWN);
+                $input_queue->offer($I_SPAWN);
             }
         }
     };
