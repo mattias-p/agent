@@ -198,31 +198,31 @@ sub create_dfa {
 
 sub new {
     my ( $class, %args ) = @_;
-    my $config_loader      = delete $args{config_loader};
-    my $job_source  = delete $args{job_source};
-    my $dispatcher  = delete $args{dispatcher};
-    my $alarms      = delete $args{alarms};
-    my $idler       = delete $args{idler};
-    my $db_class    = delete $args{db_class};
-    my $log_adapter = delete $args{log_adapter};
-    my $daemonizer  = delete $args{daemonizer};
-    my $signals     = delete $args{signals};
+    my $config_loader = delete $args{config_loader};
+    my $job_source    = delete $args{job_source};
+    my $dispatcher    = delete $args{dispatcher};
+    my $alarms        = delete $args{alarms};
+    my $idler         = delete $args{idler};
+    my $db_class      = delete $args{db_class};
+    my $log_adapter   = delete $args{log_adapter};
+    my $daemonizer    = delete $args{daemonizer};
+    my $signals       = delete $args{signals};
     !%args or confess 'unrecognized arguments';
 
-    my $lifecycle   = create_dfa();
+    my $lifecycle = create_dfa();
 
     my $self = bless {}, $class;
 
-    $self->{alarms}      = $alarms;
-    $self->{config_loader}      = $config_loader;
-    $self->{daemonizer}  = $daemonizer;
-    $self->{db_class}    = $db_class;
-    $self->{dispatcher}  = $dispatcher;
-    $self->{idler}       = $idler;
-    $self->{job_source}  = $job_source;
-    $self->{lifecycle}   = $lifecycle;
-    $self->{log_adapter} = $log_adapter;
-    $self->{signals}     = $signals;
+    $self->{alarms}        = $alarms;
+    $self->{config_loader} = $config_loader;
+    $self->{daemonizer}    = $daemonizer;
+    $self->{db_class}      = $db_class;
+    $self->{dispatcher}    = $dispatcher;
+    $self->{idler}         = $idler;
+    $self->{job_source}    = $job_source;
+    $self->{lifecycle}     = $lifecycle;
+    $self->{log_adapter}   = $log_adapter;
+    $self->{signals}       = $signals;
 
     return $self;
 }
