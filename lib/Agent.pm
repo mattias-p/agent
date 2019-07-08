@@ -5,7 +5,6 @@ use warnings;
 use Carp qw( confess croak );
 use EnumSet;
 use Exporter qw( import );
-use DFA::Builder;
 use Log::Any qw( $log );
 use Log::Any::Adapter;
 use Readonly;
@@ -72,167 +71,128 @@ Readonly our $I_SPAWN  => '5-SPAWN';
 Readonly our $I_STEP   => '6-STEP';
 
 sub create_dfa {
-    my $builder = DFA::Builder->new();
-
-    $builder->define_state(
-        $S_INIT_START => (
-            $I_ERROR  => $S_FINAL_ERROR,
-            $I_END    => $S_FINAL_OK,
-            $I_LOAD   => $S_INIT_SETUP,
-            $I_EXPIRE => $S_INIT_SETUP,
-            $I_REAP   => $S_INIT_SETUP,
-            $I_STEP   => $S_INIT_SETUP,
-            $I_SPAWN  => $S_INIT_SETUP,
-        ),
-    );
-
-    $builder->define_state(
-        $S_INIT_SETUP => (
-            $I_ERROR  => $S_FINAL_ERROR,
-            $I_END    => $S_FINAL_OK,
-            $I_LOAD   => $S_ACTIVE_SPAWN,
-            $I_EXPIRE => $S_ACTIVE_SPAWN,
-            $I_REAP   => $S_ACTIVE_SPAWN,
-            $I_STEP   => $S_ACTIVE_SPAWN,
-            $I_SPAWN  => $S_ACTIVE_SPAWN,
-        ),
-    );
-
-    $builder->define_state(
-        $S_ACTIVE_SPAWN => (
-            $I_ERROR  => $S_FINAL_ERROR,
-            $I_END    => $S_GRACE_IDLE,
-            $I_LOAD   => $S_ACTIVE_LOAD,
-            $I_EXPIRE => $S_ACTIVE_EXPIRE,
-            $I_REAP   => $S_ACTIVE_REAP,
-            $I_STEP   => $S_ACTIVE_IDLE,
-            $I_SPAWN  => $S_ACTIVE_SPAWN,
-        ),
-    );
-
-    $builder->define_state(
-        $S_ACTIVE_IDLE => (
-            $I_ERROR  => $S_FINAL_ERROR,
-            $I_END    => $S_GRACE_IDLE,
-            $I_LOAD   => $S_ACTIVE_LOAD,
-            $I_EXPIRE => $S_ACTIVE_EXPIRE,
-            $I_REAP   => $S_ACTIVE_REAP,
-            $I_STEP   => $S_ACTIVE_IDLE,
-            $I_SPAWN  => $S_ACTIVE_SPAWN,
-        )
-    );
-
-    $builder->define_state(
-        $S_ACTIVE_LOAD => (
-            $I_ERROR  => $S_FINAL_ERROR,
-            $I_END    => $S_GRACE_IDLE,
-            $I_LOAD   => $S_ACTIVE_LOAD,
-            $I_EXPIRE => $S_ACTIVE_EXPIRE,
-            $I_REAP   => $S_ACTIVE_REAP,
-            $I_STEP   => $S_ACTIVE_SPAWN,
-            $I_SPAWN  => $S_ACTIVE_SPAWN,
-        )
-    );
-
-    $builder->define_state(
-        $S_ACTIVE_EXPIRE => (
-            $I_ERROR  => $S_FINAL_ERROR,
-            $I_END    => $S_GRACE_IDLE,
-            $I_LOAD   => $S_ACTIVE_LOAD,
-            $I_EXPIRE => $S_ACTIVE_EXPIRE,
-            $I_REAP   => $S_ACTIVE_REAP,
-            $I_STEP   => $S_ACTIVE_SPAWN,
-            $I_SPAWN  => $S_ACTIVE_SPAWN,
-        ),
-    );
-
-    $builder->define_state(
-        $S_ACTIVE_REAP => (
-            $I_ERROR  => $S_FINAL_ERROR,
-            $I_END    => $S_GRACE_IDLE,
-            $I_LOAD   => $S_ACTIVE_LOAD,
-            $I_EXPIRE => $S_ACTIVE_EXPIRE,
-            $I_REAP   => $S_ACTIVE_REAP,
-            $I_STEP   => $S_ACTIVE_SPAWN,
-            $I_SPAWN  => $S_ACTIVE_SPAWN,
-        ),
-    );
-
-    $builder->define_state(
-        $S_GRACE_IDLE => (
-            $I_ERROR  => $S_FINAL_ERROR,
-            $I_END    => $S_SHUTDOWN,
-            $I_LOAD   => $S_GRACE_IDLE,
-            $I_EXPIRE => $S_GRACE_EXPIRE,
-            $I_REAP   => $S_GRACE_REAP,
-            $I_STEP   => $S_GRACE_IDLE,
-            $I_SPAWN  => $S_GRACE_IDLE,
-        ),
-    );
-
-    $builder->define_state(
-        $S_GRACE_REAP => (
-            $I_ERROR  => $S_FINAL_ERROR,
-            $I_END    => $S_SHUTDOWN,
-            $I_LOAD   => $S_GRACE_IDLE,
-            $I_EXPIRE => $S_GRACE_EXPIRE,
-            $I_REAP   => $S_GRACE_REAP,
-            $I_STEP   => $S_GRACE_IDLE,
-            $I_SPAWN  => $S_GRACE_IDLE,
-        ),
-    );
-
-    $builder->define_state(
-        $S_GRACE_EXPIRE => (
-            $I_ERROR  => $S_FINAL_ERROR,
-            $I_END    => $S_SHUTDOWN,
-            $I_LOAD   => $S_GRACE_IDLE,
-            $I_EXPIRE => $S_GRACE_EXPIRE,
-            $I_REAP   => $S_GRACE_REAP,
-            $I_STEP   => $S_GRACE_IDLE,
-            $I_SPAWN  => $S_GRACE_IDLE,
-        ),
-    );
-
-    $builder->define_state(
-        $S_SHUTDOWN => (
-            $I_ERROR  => $S_FINAL_ERROR,
-            $I_END    => $S_FINAL_OK,
-            $I_LOAD   => $S_FINAL_OK,
-            $I_EXPIRE => $S_FINAL_OK,
-            $I_REAP   => $S_FINAL_OK,
-            $I_STEP   => $S_FINAL_OK,
-            $I_SPAWN  => $S_FINAL_OK,
-        ),
-    );
-
-    $builder->define_state(
-        $S_FINAL_OK => (
-            $I_ERROR  => $S_FINAL_OK,
-            $I_END    => $S_FINAL_OK,
-            $I_LOAD   => $S_FINAL_OK,
-            $I_EXPIRE => $S_FINAL_OK,
-            $I_REAP   => $S_FINAL_OK,
-            $I_STEP   => $S_FINAL_OK,
-            $I_SPAWN  => $S_FINAL_OK,
-        )
-    );
-
-    $builder->define_state(
-        $S_FINAL_ERROR => (
-            $I_ERROR  => $S_FINAL_ERROR,
-            $I_END    => $S_FINAL_ERROR,
-            $I_LOAD   => $S_FINAL_ERROR,
-            $I_EXPIRE => $S_FINAL_ERROR,
-            $I_REAP   => $S_FINAL_ERROR,
-            $I_STEP   => $S_FINAL_ERROR,
-            $I_SPAWN  => $S_FINAL_ERROR,
-        ),
-    );
-
-    return $builder->build(
+    return DFA->new(
         initial_state => $S_INIT_START,
         final_states  => [ $S_FINAL_ERROR, $S_FINAL_OK ],
+        transitions   => {
+            $S_INIT_START => {
+                $I_ERROR  => $S_FINAL_ERROR,
+                $I_END    => $S_FINAL_OK,
+                $I_LOAD   => $S_INIT_SETUP,
+                $I_EXPIRE => $S_INIT_SETUP,
+                $I_REAP   => $S_INIT_SETUP,
+                $I_STEP   => $S_INIT_SETUP,
+                $I_SPAWN  => $S_INIT_SETUP,
+            },
+            $S_INIT_SETUP => {
+                $I_ERROR  => $S_FINAL_ERROR,
+                $I_END    => $S_FINAL_OK,
+                $I_LOAD   => $S_ACTIVE_SPAWN,
+                $I_EXPIRE => $S_ACTIVE_SPAWN,
+                $I_REAP   => $S_ACTIVE_SPAWN,
+                $I_STEP   => $S_ACTIVE_SPAWN,
+                $I_SPAWN  => $S_ACTIVE_SPAWN,
+            },
+            $S_ACTIVE_SPAWN => {
+                $I_ERROR  => $S_FINAL_ERROR,
+                $I_END    => $S_GRACE_IDLE,
+                $I_LOAD   => $S_ACTIVE_LOAD,
+                $I_EXPIRE => $S_ACTIVE_EXPIRE,
+                $I_REAP   => $S_ACTIVE_REAP,
+                $I_STEP   => $S_ACTIVE_IDLE,
+                $I_SPAWN  => $S_ACTIVE_SPAWN,
+            },
+            $S_ACTIVE_IDLE => {
+                $I_ERROR  => $S_FINAL_ERROR,
+                $I_END    => $S_GRACE_IDLE,
+                $I_LOAD   => $S_ACTIVE_LOAD,
+                $I_EXPIRE => $S_ACTIVE_EXPIRE,
+                $I_REAP   => $S_ACTIVE_REAP,
+                $I_STEP   => $S_ACTIVE_IDLE,
+                $I_SPAWN  => $S_ACTIVE_SPAWN,
+            },
+            $S_ACTIVE_LOAD => {
+                $I_ERROR  => $S_FINAL_ERROR,
+                $I_END    => $S_GRACE_IDLE,
+                $I_LOAD   => $S_ACTIVE_LOAD,
+                $I_EXPIRE => $S_ACTIVE_EXPIRE,
+                $I_REAP   => $S_ACTIVE_REAP,
+                $I_STEP   => $S_ACTIVE_SPAWN,
+                $I_SPAWN  => $S_ACTIVE_SPAWN,
+            },
+            $S_ACTIVE_EXPIRE => {
+                $I_ERROR  => $S_FINAL_ERROR,
+                $I_END    => $S_GRACE_IDLE,
+                $I_LOAD   => $S_ACTIVE_LOAD,
+                $I_EXPIRE => $S_ACTIVE_EXPIRE,
+                $I_REAP   => $S_ACTIVE_REAP,
+                $I_STEP   => $S_ACTIVE_SPAWN,
+                $I_SPAWN  => $S_ACTIVE_SPAWN,
+            },
+            $S_ACTIVE_REAP => {
+                $I_ERROR  => $S_FINAL_ERROR,
+                $I_END    => $S_GRACE_IDLE,
+                $I_LOAD   => $S_ACTIVE_LOAD,
+                $I_EXPIRE => $S_ACTIVE_EXPIRE,
+                $I_REAP   => $S_ACTIVE_REAP,
+                $I_STEP   => $S_ACTIVE_SPAWN,
+                $I_SPAWN  => $S_ACTIVE_SPAWN,
+            },
+            $S_GRACE_IDLE => {
+                $I_ERROR  => $S_FINAL_ERROR,
+                $I_END    => $S_SHUTDOWN,
+                $I_LOAD   => $S_GRACE_IDLE,
+                $I_EXPIRE => $S_GRACE_EXPIRE,
+                $I_REAP   => $S_GRACE_REAP,
+                $I_STEP   => $S_GRACE_IDLE,
+                $I_SPAWN  => $S_GRACE_IDLE,
+            },
+            $S_GRACE_REAP => {
+                $I_ERROR  => $S_FINAL_ERROR,
+                $I_END    => $S_SHUTDOWN,
+                $I_LOAD   => $S_GRACE_IDLE,
+                $I_EXPIRE => $S_GRACE_EXPIRE,
+                $I_REAP   => $S_GRACE_REAP,
+                $I_STEP   => $S_GRACE_IDLE,
+                $I_SPAWN  => $S_GRACE_IDLE,
+            },
+            $S_GRACE_EXPIRE => {
+                $I_ERROR  => $S_FINAL_ERROR,
+                $I_END    => $S_SHUTDOWN,
+                $I_LOAD   => $S_GRACE_IDLE,
+                $I_EXPIRE => $S_GRACE_EXPIRE,
+                $I_REAP   => $S_GRACE_REAP,
+                $I_STEP   => $S_GRACE_IDLE,
+                $I_SPAWN  => $S_GRACE_IDLE,
+            },
+            $S_SHUTDOWN => {
+                $I_ERROR  => $S_FINAL_ERROR,
+                $I_END    => $S_FINAL_OK,
+                $I_LOAD   => $S_FINAL_OK,
+                $I_EXPIRE => $S_FINAL_OK,
+                $I_REAP   => $S_FINAL_OK,
+                $I_STEP   => $S_FINAL_OK,
+                $I_SPAWN  => $S_FINAL_OK,
+            },
+            $S_FINAL_OK => {
+                $I_ERROR  => $S_FINAL_OK,
+                $I_END    => $S_FINAL_OK,
+                $I_LOAD   => $S_FINAL_OK,
+                $I_EXPIRE => $S_FINAL_OK,
+                $I_REAP   => $S_FINAL_OK,
+                $I_STEP   => $S_FINAL_OK,
+                $I_SPAWN  => $S_FINAL_OK,
+            },
+            $S_FINAL_ERROR => {
+                $I_ERROR  => $S_FINAL_ERROR,
+                $I_END    => $S_FINAL_ERROR,
+                $I_LOAD   => $S_FINAL_ERROR,
+                $I_EXPIRE => $S_FINAL_ERROR,
+                $I_REAP   => $S_FINAL_ERROR,
+                $I_STEP   => $S_FINAL_ERROR,
+                $I_SPAWN  => $S_FINAL_ERROR,
+            },
+        }
     );
 }
 
