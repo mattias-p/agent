@@ -9,6 +9,7 @@ use Exporter qw( import );
 use Log::Any qw( $log );
 use Log::Any::Adapter;
 use Readonly;
+use Set::Ordered;
 
 our @EXPORT_OK = qw(
   create_dfa
@@ -204,7 +205,6 @@ sub new {
     my $config_loader = delete $args{config_loader};
     my $job_source    = delete $args{job_source};
     my $dispatcher    = delete $args{dispatcher};
-    my $alarms        = delete $args{alarms};
     my $idler         = delete $args{idler};
     my $db_class      = delete $args{db_class};
     my $log_adapter   = delete $args{log_adapter};
@@ -213,13 +213,14 @@ sub new {
     !%args or confess 'unrecognized arguments';
 
     my $lifecycle = create_dfa();
+    my $deadlines = Set::Ordered->new();
 
     my $self = bless {}, $class;
 
-    $self->{alarms}        = $alarms;
     $self->{config_loader} = $config_loader;
     $self->{daemonizer}    = $daemonizer;
     $self->{db_class}      = $db_class;
+    $self->{deadlines}     = $deadlines;
     $self->{dispatcher}    = $dispatcher;
     $self->{idler}         = $idler;
     $self->{job_source}    = $job_source;
@@ -445,7 +446,12 @@ sub do_spawn {
 
     $log->infof( "job(%s:%s) claimed, worker(%s) spawned",
         $job->item_id, $job->job_id, $pid );
-    $self->{alarms}->add_timeout( $self->{dispatcher}->get_timeout() );
+    my $timeout = $self->{dispatcher}->get_timeout;
+    my $now = time();
+    my $new_deadline = $timeout // $now;
+    $log->debugf( "adding deadline(@%d) i.e. now+%ds", $new_deadline, $timeout );
+    $self->{deadlines}->insert($new_deadline);
+    $self->_update_alarm( $now );
 
     return $I_SPAWN;
 }
@@ -478,7 +484,7 @@ sub do_idle {
 sub do_expire {
     my $self = shift;
 
-    $self->{alarms}->next_timeout();
+    $self->_update_alarm( time() );
 
     my %jobs = $self->{dispatcher}->kill_overdue();
 
@@ -527,6 +533,23 @@ sub do_noop {
     my $self = shift;
 
     return $I_STEP;
+}
+
+sub _update_alarm {
+    my $self=  shift;
+    my $now = shift;
+
+    $self->{deadlines}->remove_le($now);
+    my $deadline = $self->{deadlines}->peek_min();
+    if ( $deadline ) {
+        my $timeout = $deadline - $now;
+        alarm($timeout);
+
+        $log->debugf( "alarm(now+%ds) set for deadline(@%d)",
+            $timeout, $deadline );
+    }
+
+    return;
 }
 
 1;

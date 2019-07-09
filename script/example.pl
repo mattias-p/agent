@@ -10,7 +10,6 @@ use Example::DB;
 use Example::JobSource;
 use File::Spec;
 use Readonly;
-use Unix::AlarmQueue;
 use Unix::Daemonizer;
 use Unix::Dispatcher;
 use Unix::Idler;
@@ -52,8 +51,6 @@ my $agent = do {
         out_file => $out_file,
     );
 
-    my $alarms = Unix::AlarmQueue->new();
-
     my $dispatcher = Unix::Dispatcher->new(
         p_fail => 0.0,
     );
@@ -67,7 +64,6 @@ my $agent = do {
     my $signals = Unix::Signal->new();
 
     Agent->new(
-        alarms        => $alarms,
         config_loader => $config_loader,
         daemonizer    => $daemonizer,
         db_class      => $db_class,
