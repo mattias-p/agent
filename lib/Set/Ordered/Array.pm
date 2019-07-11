@@ -27,6 +27,8 @@ Binary search is used for finding elements and positions within the array.
 
 =head1 CONSTRUCTORS
 
+=head2 new
+
 Construct a new instance.
 
     my $set = Set::Ordered::Array->new(

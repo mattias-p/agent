@@ -4,12 +4,12 @@ use warnings;
 
 use Carp qw( confess croak );
 use DFA;
-use EnumQueue;
 use Exporter qw( import );
 use Log::Any qw( $log );
 use Log::Any::Adapter;
 use Readonly;
 use Set::Ordered::Array;
+use Set::Ordered::Integer;
 
 our @EXPORT_OK = qw(
   create_dfa
@@ -32,6 +32,7 @@ our @EXPORT_OK = qw(
   $I_LOAD
   $I_SPAWN
   $I_STEP
+  @INPUT_NAMES
 );
 
 Readonly our $S_INIT_START    => 'INIT_START';
@@ -64,15 +65,16 @@ Readonly my %ENTRY_ACTIONS => (
     $S_FINAL_ERROR   => \&do_noop,
 );
 
-Readonly our $I_ERROR  => '0-ERROR';
-Readonly our $I_END    => '1-END';
-Readonly our $I_LOAD   => '2-LOAD';
-Readonly our $I_EXPIRE => '3-EXPIRE';
-Readonly our $I_REAP   => '4-REAP';
-Readonly our $I_SPAWN  => '5-SPAWN';
-Readonly our $I_STEP   => '6-STEP';
-Readonly our @ORDERED_INPUTS =>
-  ( $I_ERROR, $I_END, $I_LOAD, $I_EXPIRE, $I_REAP, $I_SPAWN, $I_STEP );
+Readonly our $I_ERROR  => 0;
+Readonly our $I_END    => 1;
+Readonly our $I_LOAD   => 2;
+Readonly our $I_EXPIRE => 3;
+Readonly our $I_REAP   => 4;
+Readonly our $I_SPAWN  => 5;
+Readonly our $I_STEP   => 6;
+Readonly our @INPUT_NAMES => qw(
+  0-ERROR 1-END 2-LOAD 3-EXPIRE 4-REAP 5-SPAWN 6-STEP
+);
 
 sub create_dfa {
     return DFA->new(
@@ -249,39 +251,40 @@ sub run {
     $log->warnf( "*" x 78, $$ );
     $log->infof( "State(%s)", $self->state );
 
-    my $input_queue = EnumQueue->new( full_ordered_set => \@ORDERED_INPUTS );
+    my $input_flags = Set::Ordered::Integer->new();
 
     eval {
         while ( !$self->is_final ) {
-            my $input = $input_queue->poll() // $I_STEP;
-            my @new_inputs = $self->process( $input );
+            my $input = $input_flags->pop_min // $I_STEP;
 
-            $input_queue->offer($_) for @new_inputs;
+            my $new_input = $self->process($input);
+
+            $input_flags->insert($new_input);
 
             if ( $self->{signals}->retrieve_caught('ALRM') ) {
                 $log->debug("caught SIGALRM");
-                $input_queue->offer($I_EXPIRE);
+                $input_flags->insert($I_EXPIRE);
             }
             if ( $self->{signals}->retrieve_caught('CHLD') ) {
                 $log->debug("caught SIGCHLD");
-                $input_queue->offer($I_REAP);
+                $input_flags->insert($I_REAP);
             }
             if ( $self->{signals}->retrieve_caught('TERM') ) {
                 $log->debug("caught SIGTERM");
-                $input_queue->offer($I_END);
+                $input_flags->insert($I_END);
             }
             if ( $self->{signals}->retrieve_caught('HUP') ) {
                 $log->debug("caught SIGHUP");
-                $input_queue->offer($I_LOAD);
+                $input_flags->insert($I_LOAD);
             }
             if ( $self->{signals}->retrieve_caught('USR2') ) {
                 $log->debug("caught SIGUSR2");
-                $input_queue->offer($I_SPAWN);
+                $input_flags->insert($I_SPAWN);
             }
         }
     };
     if ($@) {
-        $log->criticalf('uncaught exception in agent: %s', $@ );
+        $log->criticalf( 'uncaught exception in agent: %s', $@ );
         return 2;
     }
 
@@ -292,7 +295,7 @@ sub run {
         return 1;
     }
     else {
-        $log->warn('unexpected final state: %s', $self->state );
+        $log->warn( 'unexpected final state: %s', $self->state );
         return 2;
     }
 }
@@ -303,7 +306,7 @@ sub process {
 
     my $state = $self->{lifecycle}->process($input);
 
-    $log->infof( "input(%s) -> state(%s)", $input, $state );
+    $log->infof( "input(%s) -> state(%s)", $INPUT_NAMES[$input], $state );
     return $ENTRY_ACTIONS{$state}->($self);
 }
 
