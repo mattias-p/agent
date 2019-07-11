@@ -9,7 +9,7 @@ use Exporter qw( import );
 use Log::Any qw( $log );
 use Log::Any::Adapter;
 use Readonly;
-use Set::Ordered;
+use Set::Ordered::Array;
 
 our @EXPORT_OK = qw(
   create_dfa
@@ -213,7 +213,7 @@ sub new {
     !%args or confess 'unrecognized arguments';
 
     my $lifecycle = create_dfa();
-    my $deadlines = Set::Ordered->new();
+    my $deadlines = Set::Ordered::Array->new();
 
     my $self = bless {}, $class;
 
