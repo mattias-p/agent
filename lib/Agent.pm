@@ -416,7 +416,7 @@ sub do_spawn {
         $job,
         sub {
             eval {
-                $self->{signals}->uninstall_handlers();
+                $self->{signals}->ignore_all_signals();
                 my $config   = $self->{config};
                 my $db_class = $self->{db_class};
                 $self->forget_everyting();

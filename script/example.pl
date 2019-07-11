@@ -13,7 +13,7 @@ use Readonly;
 use Unix::Daemonizer;
 use Unix::Dispatcher;
 use Unix::Idler;
-use Unix::Signal;
+use Unix::Signal qw( $SIGNALS );
 
 my $agent = do {
     Readonly my $pid_file    => File::Spec->catfile( getcwd, 'example.pid' );
@@ -61,7 +61,7 @@ my $agent = do {
         p_fail => 0.0,
     );
 
-    my $signals = Unix::Signal->new();
+    my $signals = $SIGNALS;
 
     Agent->new(
         config_loader => $config_loader,
