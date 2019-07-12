@@ -3,12 +3,9 @@ use strict;
 use warnings;
 
 use Carp qw( confess );
-use Config;
 use Log::Any qw( $log );
 use POSIX ":sys_wait_h";
-use Readonly;
-
-Readonly my @SIG_NAMES => ( split ' ', $Config{sig_name} );
+use Unix::WaitStatus;
 
 sub new {
     my ( $class, %args ) = @_;
@@ -101,8 +98,8 @@ sub reap {
         my $status = waitpid( $pid, WNOHANG );
         if ( $status != 0 ) {
             my ( undef, $data ) = @{ delete $self->{jobs}{$pid} };
-            my $severity = $self->termination_severity( ${^CHILD_ERROR_NATIVE} );
-            $reaped{$pid} = [ $severity, ${^CHILD_ERROR_NATIVE}, $data ];
+            my $wait_status = Unix::WaitStatus->new( ${^CHILD_ERROR_NATIVE} );
+            $reaped{$pid} = [ $wait_status, $data ];
         }
     }
 
@@ -126,67 +123,6 @@ sub kill_workers {
     }
 
     return %jobs;
-}
-
-sub termination_severity {
-    my ( $self, $child_error_native ) = @_;
-
-    if ( $child_error_native < 0 ) {
-        return "error";
-    }
-    elsif ( WIFEXITED( $child_error_native ) ) {
-        if ( WEXITSTATUS($child_error_native) == 0 ) {
-            return "info";
-        }
-        else {
-            return "warn";
-        }
-    }
-    elsif ( WIFSIGNALED( $child_error_native ) ) {
-        return "warn";
-    }
-    elsif ( WIFSTOPPED( $child_error_native ) ) {
-        return "notice";
-    }
-    else {
-        return "warn";
-    }
-}
-
-sub termination_reason {
-    my ( $self, $child_error_native ) = @_;
-
-    if ( $child_error_native < 0 ) {
-        return "does not exist";
-    }
-    elsif ( WIFEXITED( $child_error_native ) ) {
-        my $exit_status = WEXITSTATUS($child_error_native);
-        if ( $exit_status == 0 ) {
-            return sprintf "terminated successfully";
-        }
-        else {
-            return sprintf "terminated normally with exit status $exit_status";
-        }
-    }
-    elsif ( WIFSIGNALED( $child_error_native ) ) {
-        my $sig_num = WTERMSIG($child_error_native);
-        my $signal =
-          ( $sig_num <= $#SIG_NAMES )
-          ? "$sig_num (SIG" . $SIG_NAMES[$sig_num] . ")"
-          : $sig_num;
-        return sprintf "terminated due to uncaught signal $signal";
-    }
-    elsif ( WIFSTOPPED( $child_error_native ) ) {
-        my $sig_num = WSTOPSIG($child_error_native);
-        my $signal =
-          ( $sig_num <= $#SIG_NAMES )
-          ? "$sig_num (SIG" . $SIG_NAMES[$sig_num] . ")"
-          : $sig_num;
-        return sprintf "stopped by signal $signal";
-    }
-    else {
-        return "in unknown state $child_error_native";
-    }
 }
 
 1;

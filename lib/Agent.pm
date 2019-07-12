@@ -492,10 +492,16 @@ sub do_reap {
 
     my %jobs = $self->{dispatcher}->reap();
     for my $pid ( keys %jobs ) {
-        my ( $severity, $details, $job ) = @{ $jobs{$pid} };
+        my ( $wait_status, $job ) = @{ $jobs{$pid} };
+        my $severity =
+            ( $wait_status->is_not_found ) ? "error"
+          : ( $wait_status->is_exit_ok )   ? "info"
+          : ( $wait_status->is_stopsig )   ? "notice"
+          :                                  "warn";
+
         my $is_severity = "is_$severity";
         if ( $log->$is_severity() ) {
-            my $reason = $self->{dispatcher}->termination_reason($details);
+            my $reason = $wait_status->message;
             $log->$severity( "worker($pid) $reason, releasing job("
                   . $job->item_id . ":"
                   . $job->job_id
