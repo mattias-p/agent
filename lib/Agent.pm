@@ -20,60 +20,69 @@ our @EXPORT_OK = qw(
   $S_ACTIVE_REAP
   $S_ACTIVE_EXPIRE
   $S_ACTIVE_IDLE
-  $S_GRACE_REAP
-  $S_GRACE_EXPIRE
-  $S_GRACE_IDLE
-  $S_SHUTDOWN
+  $S_CLOSING_REAP
+  $S_CLOSING_EXPIRE
+  $S_CLOSING_IDLE
+  $S_CLOSING_KILL_
   $S_FINAL_ERROR
   $S_FINAL_OK
   $I_EXPIRE
   $I_REAP
-  $I_END
+  $I_CLOSE
   $I_LOAD
   $I_SPAWN
   $I_STEP
   @INPUT_NAMES
 );
 
-Readonly our $S_INIT_START    => 'INIT_START';
-Readonly our $S_INIT_SETUP    => 'INIT_SETUP';
-Readonly our $S_ACTIVE_LOAD   => 'ACTIVE_LOAD';
-Readonly our $S_ACTIVE_SPAWN  => 'ACTIVE_SPAWN';
-Readonly our $S_ACTIVE_IDLE   => 'ACTIVE_IDLE';
-Readonly our $S_ACTIVE_REAP   => 'ACTIVE_REAP';
-Readonly our $S_ACTIVE_EXPIRE => 'ACTIVE_EXPIRE';
-Readonly our $S_GRACE_IDLE    => 'GRACE_IDLE';
-Readonly our $S_GRACE_REAP    => 'GRACE_REAP';
-Readonly our $S_GRACE_EXPIRE  => 'GRACE_EXPIRE';
-Readonly our $S_SHUTDOWN      => 'SHUTDOWN';
-Readonly our $S_FINAL_ERROR   => 'FINAL_ERROR';
-Readonly our $S_FINAL_OK      => 'FINAL_OK';
+Readonly our $S_INIT_START     => 'INIT_START';
+Readonly our $S_INIT_SETUP     => 'INIT_SETUP';
+Readonly our $S_ACTIVE_LOAD    => 'ACTIVE_LOAD';
+Readonly our $S_ACTIVE_SPAWN   => 'ACTIVE_SPAWN';
+Readonly our $S_ACTIVE_IDLE    => 'ACTIVE_IDLE';
+Readonly our $S_ACTIVE_REAP    => 'ACTIVE_REAP';
+Readonly our $S_ACTIVE_EXPIRE  => 'ACTIVE_EXPIRE';
+Readonly our $S_CLOSING_IDLE   => 'CLOSING_IDLE';
+Readonly our $S_CLOSING_REAP   => 'CLOSING_REAP';
+Readonly our $S_CLOSING_EXPIRE => 'CLOSING_EXPIRE';
+Readonly our $S_CLOSING_ACQUIT => 'CLOSING_ACQUIT';
+Readonly our $S_FINAL_ERROR    => 'FINAL_ERROR';
+Readonly our $S_FINAL_OK       => 'FINAL_OK';
 
 Readonly my %ENTRY_ACTIONS => (
-    $S_INIT_START    => \&do_noop,
-    $S_INIT_SETUP    => \&do_setup,
-    $S_ACTIVE_SPAWN  => \&do_spawn,
-    $S_ACTIVE_IDLE   => \&do_idle,
-    $S_ACTIVE_LOAD   => \&do_load,
-    $S_ACTIVE_EXPIRE => \&do_expire,
-    $S_ACTIVE_REAP   => \&do_reap,
-    $S_GRACE_IDLE    => \&do_grace_idle,
-    $S_GRACE_EXPIRE  => \&do_expire,
-    $S_GRACE_REAP    => \&do_reap,
-    $S_SHUTDOWN      => \&do_shutdown,
-    $S_FINAL_OK      => \&do_noop,
-    $S_FINAL_ERROR   => \&do_noop,
+    $S_INIT_START     => \&do_noop,
+    $S_INIT_SETUP     => \&do_setup,
+    $S_ACTIVE_SPAWN   => \&do_spawn,
+    $S_ACTIVE_IDLE    => \&do_idle,
+    $S_ACTIVE_LOAD    => \&do_load,
+    $S_ACTIVE_EXPIRE  => \&do_expire,
+    $S_ACTIVE_REAP    => \&do_reap,
+    $S_CLOSING_IDLE   => \&do_grace_idle,
+    $S_CLOSING_EXPIRE => \&do_expire,
+    $S_CLOSING_REAP   => \&do_reap,
+    $S_CLOSING_ACQUIT => \&do_acquit,
+    $S_FINAL_OK       => \&do_noop,
+    $S_FINAL_ERROR    => \&do_noop,
 );
 
 Readonly our $I_ERROR  => 0;
-Readonly our $I_END    => 1;
-Readonly our $I_LOAD   => 2;
+Readonly our $I_ACQUIT => 1;
+Readonly our $I_CLOSE  => 2;
 Readonly our $I_EXPIRE => 3;
 Readonly our $I_REAP   => 4;
-Readonly our $I_SPAWN  => 5;
-Readonly our $I_STEP   => 6;
+Readonly our $I_LOAD   => 5;
+Readonly our $I_SPAWN  => 6;
+Readonly our $I_STEP   => 7;
+
 Readonly our @INPUT_NAMES => qw(
-  0-ERROR 1-END 2-LOAD 3-EXPIRE 4-REAP 5-SPAWN 6-STEP
+  ERROR
+  ACQUIT
+  CLOSE
+  EXPIRE
+  REAP
+  LOAD
+  SPAWN
+  STEP
 );
 
 sub create_dfa {
@@ -83,120 +92,133 @@ sub create_dfa {
         transitions   => {
             $S_INIT_START => {
                 $I_ERROR  => $S_FINAL_ERROR,
-                $I_END    => $S_FINAL_OK,
-                $I_LOAD   => $S_INIT_SETUP,
                 $I_EXPIRE => $S_INIT_SETUP,
                 $I_REAP   => $S_INIT_SETUP,
-                $I_STEP   => $S_INIT_SETUP,
+                $I_ACQUIT => $S_FINAL_OK,
+                $I_CLOSE  => $S_FINAL_OK,
+                $I_LOAD   => $S_INIT_SETUP,
                 $I_SPAWN  => $S_INIT_SETUP,
+                $I_STEP   => $S_INIT_SETUP,
             },
             $S_INIT_SETUP => {
                 $I_ERROR  => $S_FINAL_ERROR,
-                $I_END    => $S_FINAL_OK,
-                $I_LOAD   => $S_ACTIVE_SPAWN,
                 $I_EXPIRE => $S_ACTIVE_SPAWN,
                 $I_REAP   => $S_ACTIVE_SPAWN,
-                $I_STEP   => $S_ACTIVE_SPAWN,
+                $I_ACQUIT => $S_FINAL_OK,
+                $I_CLOSE  => $S_FINAL_OK,
+                $I_LOAD   => $S_ACTIVE_SPAWN,
                 $I_SPAWN  => $S_ACTIVE_SPAWN,
+                $I_STEP   => $S_ACTIVE_SPAWN,
             },
             $S_ACTIVE_SPAWN => {
                 $I_ERROR  => $S_FINAL_ERROR,
-                $I_END    => $S_GRACE_IDLE,
-                $I_LOAD   => $S_ACTIVE_LOAD,
                 $I_EXPIRE => $S_ACTIVE_EXPIRE,
                 $I_REAP   => $S_ACTIVE_REAP,
-                $I_STEP   => $S_ACTIVE_IDLE,
+                $I_ACQUIT => $S_CLOSING_ACQUIT,
+                $I_CLOSE  => $S_CLOSING_IDLE,
+                $I_LOAD   => $S_ACTIVE_LOAD,
                 $I_SPAWN  => $S_ACTIVE_SPAWN,
+                $I_STEP   => $S_ACTIVE_IDLE,
             },
             $S_ACTIVE_IDLE => {
                 $I_ERROR  => $S_FINAL_ERROR,
-                $I_END    => $S_GRACE_IDLE,
-                $I_LOAD   => $S_ACTIVE_LOAD,
                 $I_EXPIRE => $S_ACTIVE_EXPIRE,
                 $I_REAP   => $S_ACTIVE_REAP,
-                $I_STEP   => $S_ACTIVE_IDLE,
+                $I_ACQUIT => $S_CLOSING_ACQUIT,
+                $I_CLOSE  => $S_CLOSING_IDLE,
+                $I_LOAD   => $S_ACTIVE_LOAD,
                 $I_SPAWN  => $S_ACTIVE_SPAWN,
+                $I_STEP   => $S_ACTIVE_IDLE,
             },
             $S_ACTIVE_LOAD => {
                 $I_ERROR  => $S_FINAL_ERROR,
-                $I_END    => $S_GRACE_IDLE,
-                $I_LOAD   => $S_ACTIVE_LOAD,
                 $I_EXPIRE => $S_ACTIVE_EXPIRE,
                 $I_REAP   => $S_ACTIVE_REAP,
-                $I_STEP   => $S_ACTIVE_SPAWN,
+                $I_ACQUIT => $S_CLOSING_ACQUIT,
+                $I_CLOSE  => $S_CLOSING_IDLE,
+                $I_LOAD   => $S_ACTIVE_LOAD,
                 $I_SPAWN  => $S_ACTIVE_SPAWN,
+                $I_STEP   => $S_ACTIVE_SPAWN,
             },
             $S_ACTIVE_EXPIRE => {
                 $I_ERROR  => $S_FINAL_ERROR,
-                $I_END    => $S_GRACE_IDLE,
-                $I_LOAD   => $S_ACTIVE_LOAD,
                 $I_EXPIRE => $S_ACTIVE_EXPIRE,
                 $I_REAP   => $S_ACTIVE_REAP,
-                $I_STEP   => $S_ACTIVE_SPAWN,
+                $I_ACQUIT => $S_CLOSING_ACQUIT,
+                $I_CLOSE  => $S_CLOSING_IDLE,
+                $I_LOAD   => $S_ACTIVE_LOAD,
                 $I_SPAWN  => $S_ACTIVE_SPAWN,
+                $I_STEP   => $S_ACTIVE_SPAWN,
             },
             $S_ACTIVE_REAP => {
                 $I_ERROR  => $S_FINAL_ERROR,
-                $I_END    => $S_GRACE_IDLE,
-                $I_LOAD   => $S_ACTIVE_LOAD,
                 $I_EXPIRE => $S_ACTIVE_EXPIRE,
                 $I_REAP   => $S_ACTIVE_REAP,
-                $I_STEP   => $S_ACTIVE_SPAWN,
+                $I_ACQUIT => $S_CLOSING_ACQUIT,
+                $I_CLOSE  => $S_CLOSING_IDLE,
+                $I_LOAD   => $S_ACTIVE_LOAD,
                 $I_SPAWN  => $S_ACTIVE_SPAWN,
+                $I_STEP   => $S_ACTIVE_SPAWN,
             },
-            $S_GRACE_IDLE => {
+            $S_CLOSING_IDLE => {
                 $I_ERROR  => $S_FINAL_ERROR,
-                $I_END    => $S_SHUTDOWN,
-                $I_LOAD   => $S_GRACE_IDLE,
-                $I_EXPIRE => $S_GRACE_EXPIRE,
-                $I_REAP   => $S_GRACE_REAP,
-                $I_STEP   => $S_GRACE_IDLE,
-                $I_SPAWN  => $S_GRACE_IDLE,
+                $I_EXPIRE => $S_CLOSING_EXPIRE,
+                $I_REAP   => $S_CLOSING_REAP,
+                $I_ACQUIT => $S_CLOSING_ACQUIT,
+                $I_CLOSE  => $S_FINAL_OK,
+                $I_LOAD   => $S_CLOSING_IDLE,
+                $I_SPAWN  => $S_CLOSING_IDLE,
+                $I_STEP   => $S_CLOSING_IDLE,
             },
-            $S_GRACE_REAP => {
+            $S_CLOSING_REAP => {
                 $I_ERROR  => $S_FINAL_ERROR,
-                $I_END    => $S_SHUTDOWN,
-                $I_LOAD   => $S_GRACE_IDLE,
-                $I_EXPIRE => $S_GRACE_EXPIRE,
-                $I_REAP   => $S_GRACE_REAP,
-                $I_STEP   => $S_GRACE_IDLE,
-                $I_SPAWN  => $S_GRACE_IDLE,
+                $I_EXPIRE => $S_CLOSING_EXPIRE,
+                $I_REAP   => $S_CLOSING_REAP,
+                $I_ACQUIT => $S_CLOSING_ACQUIT,
+                $I_CLOSE  => $S_CLOSING_IDLE,
+                $I_LOAD   => $S_CLOSING_IDLE,
+                $I_SPAWN  => $S_CLOSING_IDLE,
+                $I_STEP   => $S_CLOSING_IDLE,
             },
-            $S_GRACE_EXPIRE => {
+            $S_CLOSING_EXPIRE => {
                 $I_ERROR  => $S_FINAL_ERROR,
-                $I_END    => $S_SHUTDOWN,
-                $I_LOAD   => $S_GRACE_IDLE,
-                $I_EXPIRE => $S_GRACE_EXPIRE,
-                $I_REAP   => $S_GRACE_REAP,
-                $I_STEP   => $S_GRACE_IDLE,
-                $I_SPAWN  => $S_GRACE_IDLE,
+                $I_EXPIRE => $S_CLOSING_EXPIRE,
+                $I_REAP   => $S_CLOSING_REAP,
+                $I_ACQUIT => $S_CLOSING_ACQUIT,
+                $I_CLOSE  => $S_CLOSING_IDLE,
+                $I_LOAD   => $S_CLOSING_IDLE,
+                $I_SPAWN  => $S_CLOSING_IDLE,
+                $I_STEP   => $S_CLOSING_IDLE,
             },
-            $S_SHUTDOWN => {
+            $S_CLOSING_ACQUIT => {
                 $I_ERROR  => $S_FINAL_ERROR,
-                $I_END    => $S_FINAL_OK,
-                $I_LOAD   => $S_FINAL_OK,
-                $I_EXPIRE => $S_FINAL_OK,
-                $I_REAP   => $S_FINAL_OK,
-                $I_STEP   => $S_FINAL_OK,
-                $I_SPAWN  => $S_FINAL_OK,
+                $I_EXPIRE => $S_CLOSING_EXPIRE,
+                $I_REAP   => $S_CLOSING_REAP,
+                $I_ACQUIT => $S_CLOSING_ACQUIT,
+                $I_CLOSE  => $S_CLOSING_IDLE,
+                $I_LOAD   => $S_CLOSING_IDLE,
+                $I_SPAWN  => $S_CLOSING_IDLE,
+                $I_STEP   => $S_CLOSING_IDLE,
             },
             $S_FINAL_OK => {
                 $I_ERROR  => $S_FINAL_OK,
-                $I_END    => $S_FINAL_OK,
-                $I_LOAD   => $S_FINAL_OK,
                 $I_EXPIRE => $S_FINAL_OK,
                 $I_REAP   => $S_FINAL_OK,
-                $I_STEP   => $S_FINAL_OK,
+                $I_ACQUIT => $S_FINAL_OK,
+                $I_CLOSE  => $S_FINAL_OK,
+                $I_LOAD   => $S_FINAL_OK,
                 $I_SPAWN  => $S_FINAL_OK,
+                $I_STEP   => $S_FINAL_OK,
             },
             $S_FINAL_ERROR => {
                 $I_ERROR  => $S_FINAL_ERROR,
-                $I_END    => $S_FINAL_ERROR,
-                $I_LOAD   => $S_FINAL_ERROR,
                 $I_EXPIRE => $S_FINAL_ERROR,
                 $I_REAP   => $S_FINAL_ERROR,
-                $I_STEP   => $S_FINAL_ERROR,
+                $I_ACQUIT => $S_FINAL_ERROR,
+                $I_CLOSE  => $S_FINAL_ERROR,
+                $I_LOAD   => $S_FINAL_ERROR,
                 $I_SPAWN  => $S_FINAL_ERROR,
+                $I_STEP   => $S_FINAL_ERROR,
             },
         }
     );
@@ -269,13 +291,17 @@ sub run {
                 $log->debug("caught SIGCHLD");
                 $input_flags->insert($I_REAP);
             }
-            if ( $self->{signals}->retrieve_caught('TERM') ) {
-                $log->debug("caught SIGTERM");
-                $input_flags->insert($I_END);
-            }
             if ( $self->{signals}->retrieve_caught('HUP') ) {
                 $log->debug("caught SIGHUP");
                 $input_flags->insert($I_LOAD);
+            }
+            if ( $self->{signals}->retrieve_caught('QUIT') ) {
+                $log->debug("caught SIGQUIT");
+                $input_flags->insert($I_ACQUIT);
+            }
+            if ( $self->{signals}->retrieve_caught('TERM') ) {
+                $log->debug("caught SIGTERM");
+                $input_flags->insert($I_CLOSE);
             }
             if ( $self->{signals}->retrieve_caught('USR2') ) {
                 $log->debug("caught SIGUSR2");
@@ -363,6 +389,7 @@ sub do_setup {
     $self->{signals}->install_handler( 'ALRM' );
     $self->{signals}->install_handler( 'CHLD' );
     $self->{signals}->install_handler( 'HUP' );
+    $self->{signals}->install_handler( 'QUIT' );
     $self->{signals}->install_handler( 'TERM' );
     $self->{signals}->install_handler( 'USR2' );
 
@@ -484,12 +511,23 @@ sub do_idle {
     return $I_STEP;
 }
 
+sub do_grace_idle {
+    my $self = shift;
+    if ( $self->{dispatcher}->has_live_workers ) {
+        $self->do_idle;
+        return $I_STEP;
+    }
+    else {
+        return $I_CLOSE;
+    }
+}
+
 sub do_expire {
     my $self = shift;
 
     $self->_update_alarm( time() );
 
-    my %jobs = $self->{dispatcher}->kill_overdue();
+    my %jobs = $self->{dispatcher}->kill_workers( treshold => time() );
 
     for my $pid ( keys %jobs ) {
         my $job = $jobs{$pid};
@@ -501,34 +539,18 @@ sub do_expire {
     return $I_STEP;
 }
 
-sub do_grace_idle {
-    my $self = shift;
-    if ( $self->{dispatcher}->has_live_workers ) {
-        $self->do_idle;
-        return $I_STEP;
-    }
-    else {
-        return $I_END;
-    }
-}
-
-sub do_shutdown {
+sub do_acquit {
     my $self = shift;
 
-    my %jobs = $self->{dispatcher}->shutdown();
+    my %jobs = $self->{dispatcher}->kill_workers( treshold => undef );
 
     for my $pid ( keys %jobs ) {
-        my ( $severity, $details, $job ) = @{ $jobs{$pid} };
-        my $is_severity = "is_$severity";
-        if ( $log->$is_severity() ) {
-            my $reason = $self->{dispatcher}->termination_reason($details);
-            $log->$severity( "worker($pid) $reason, releasing job("
-                  . $job->item_id . ":"
-                  . $job->job_id
-                  . ")" );
-        }
+        my $job = $jobs{$pid};
+        $log->infof( "worker(%s) killed, releasing job(%s:%s)",
+            $pid, $job->item_id, $job->job_id );
         $job->release();
     }
+
     return $I_STEP;
 }
 

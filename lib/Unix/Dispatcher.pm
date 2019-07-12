@@ -93,14 +93,12 @@ sub spawn {
     return $pid;
 }
 
-sub _reap {
+sub reap {
     my $self  = shift;
-    my $flags = shift;
 
     my %reaped;
-
     for my $pid ( keys %{ $self->{jobs} } ) {
-        my $status = waitpid( $pid, $flags );
+        my $status = waitpid( $pid, WNOHANG );
         if ( $status != 0 ) {
             my ( undef, $data ) = @{ delete $self->{jobs}{$pid} };
             my $severity = $self->termination_severity( ${^CHILD_ERROR_NATIVE} );
@@ -111,19 +109,15 @@ sub _reap {
     return %reaped;
 }
 
-sub reap {
-    my $self = shift;
-    return $self->_reap( WNOHANG );
-}
-
-sub kill_overdue {
-    my $self = shift;
-
-    my $now = time();
+sub kill_workers {
+    my ( $self, %args ) = @_;
+    my $treshold = delete $args{treshold};
+    !%args
+      or confess 'unrecognized arguments';
 
     my %jobs;
     for my $pid ( keys %{ $self->{jobs} } ) {
-        if ( $self->{jobs}{$pid}[0] <= $now )
+        if ( !defined $treshold || $self->{jobs}{$pid}[0] <= $treshold )
         {
             kill 'KILL', $pid;
             my $data = $self->{jobs}{$pid}[1];
@@ -132,16 +126,6 @@ sub kill_overdue {
     }
 
     return %jobs;
-}
-
-sub shutdown {
-    my $self = shift;
-
-    for my $pid ( keys %{ $self->{jobs} } ) {
-        kill 'KILL', $pid;
-    }
-
-    return $self->_reap( 0 );
 }
 
 sub termination_severity {
