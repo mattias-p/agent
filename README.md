@@ -87,6 +87,8 @@ TBD
 * The implementation should be tested according to the documentation in order to
   identify weaknesses in the documentation.
 
+* Remember to use perlcritic.
+
 * The logging is getting verbose.
   There should be some filtering.
 
