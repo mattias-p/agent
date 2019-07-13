@@ -81,6 +81,8 @@ TBD
 
 ## Known problems
 
+* Agent should not decide the exit status for the script.
+
 * The implementation should be documented in order to identify weaknesses in the
   design.
 
