@@ -1,4 +1,4 @@
-package Unix::Signal;
+package Unix::SignalHandler;
 use strict;
 use warnings;
 
@@ -6,19 +6,19 @@ use Exporter 'import';
 use Readonly;
 use Scalar::Util qw(looks_like_number);
 
-Readonly our $SIGNALS => bless {}, __PACKAGE__;
+Readonly our $SIGNAL_HANDLER => bless {}, __PACKAGE__;
 
 =head1 NAME
 
-Unix::Signal - A singleton class catching or ignoring signals
+Unix::SignalHandler - A singleton class catching or ignoring signals
 
 =head1 SYNOPSIS
 
-    use Unix::Signals qw( $SIGNALS );
+    use Unix::SignalHandler qw( $SIGNAL_HANDLER );
 
 =head1 DESCRIPTION
 
-Unix::Signal lets you install signal handlers that record caught signals so you
+Unix::SignalHandler lets you install signal handlers that record caught signals so you
 can check them later (e.g. in your main loop).
 
 When you check a signal you can tell whether or not the signal has been caught
@@ -30,13 +30,13 @@ Additionally a method to ignore all signals is provided.
 
 =head1 EXPORTS
 
-=head2 $SIGNALS
+=head2 $SIGNAL_HANDLER
 
 The singleton instance of this class.
 
 =cut
 
-our @EXPORT_OK = qw( $SIGNALS );
+our @EXPORT_OK = qw( $SIGNAL_HANDLER );
 
 =head1 INSTANCE METHODS
 
@@ -44,9 +44,9 @@ our @EXPORT_OK = qw( $SIGNALS );
 
 Installs a handler for the given signal.
 
-    $SIGNALS->install_handler('INT');
+    $SIGNAL_HANDLER->install_handler('INT');
 
-    while ( !$SIGNALS->retrieve_caught('INT') ) {
+    while ( !$SIGNAL_HANDLER->retrieve_caught('INT') ) {
         sleep 1;
     }
 
@@ -67,7 +67,7 @@ sub install_handler {
 
 Check and clear the flag for the given signal.
 
-    if ( $SIGNALS->retrieve_caught( 'HUP' ) ) {
+    if ( $SIGNAL_HANDLER->retrieve_caught( 'HUP' ) ) {
         print "Hung up!\n";
     }
 
@@ -77,8 +77,8 @@ sub retrieve_caught {
     my $self    = shift;
     my $signame = shift;
 
-    if ( $SIGNALS->{$signame} ) {
-        $SIGNALS->{$signame} = 0;
+    if ( $SIGNAL_HANDLER->{$signame} ) {
+        $SIGNAL_HANDLER->{$signame} = 0;
         return 1;
     }
 
@@ -89,8 +89,8 @@ sub retrieve_caught {
 
 Set all signal handlers to IGNORE.
 
-    use Unix::Signals qw( $SIGNALS );
-    $SIGNALS->ignore_all_signals();
+    use Unix::SignalHandler qw( $SIGNAL_HANDLER );
+    $SIGNAL_HANDLER->ignore_all_signals();
 
 =cut
 
@@ -107,7 +107,7 @@ sub ignore_all_signals {
 sub _catch {
     my $signame = shift;
 
-    $SIGNALS->{$signame} = 1;
+    $SIGNAL_HANDLER->{$signame} = 1;
 
     return;
 }
