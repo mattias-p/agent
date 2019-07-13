@@ -479,7 +479,7 @@ sub do_spawn {
         $job->item_id, $job->job_id, $pid );
     my $timeout = $self->{dispatcher}->get_timeout;
     my $now = time();
-    my $new_deadline = $timeout // $now;
+    my $new_deadline = $now + $timeout;
     $log->debugf( "adding deadline(@%d) i.e. now+%ds", $new_deadline, $timeout );
     $self->{deadlines}->insert($new_deadline);
     $self->_update_alarm( $now );
