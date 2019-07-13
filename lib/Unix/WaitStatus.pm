@@ -8,16 +8,38 @@ use Readonly;
 
 Readonly my @SIG_NAMES => ( split ' ', $Config{sig_name} );
 
+=head1 NAME
+
+Unix::WaitStatus - A helper class for interpreting ${^CHILD_ERROR_NATIVE}.
+
+=head1 SYNOPSIS
+
+    my $status = Unix::WaitStatus->new( ${^CHILD_ERROR_NATIVE} );
+    print $status->message, "\n";
+
+=head1 CONSTRUCTOR
+
+Construct a new Unix::WaitStatus for a given ${^CHILD_ERROR_NATIVE} value.
+
+=cut
+
 sub new {
     my $class  = shift;
     my $status = shift;
 
     my $inner = $status;
-
     my $self = bless \$inner, $class;
 
     return $self;
 }
+
+=head1 METHODS
+
+=head2 is_not_found
+
+Test if the status indicates that the PID does not exist.
+
+=cut
 
 sub is_not_found {
     my $self = shift;
@@ -25,15 +47,33 @@ sub is_not_found {
     return $$self < 0;
 }
 
+=head2 is_exit_ok
+
+Test if the status indicates that the process exited with a zero status code.
+
+=cut
+
 sub is_exit_ok {
     my $self = shift;
     return WIFEXITED( $$self ) && WEXITSTATUS($$self) == 0;
 }
 
+=head2 is_stopsig
+
+Test if the status indicates that the process was stopped due to a signal.
+
+=cut
+
 sub is_stopsig {
     my $self = shift;
     return WIFSTOPPED( $$self );
 }
+
+=head2 message
+
+Get a human readable string describing the status.
+
+=cut
 
 sub message {
     my ( $self ) = @_;
