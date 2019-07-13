@@ -1,4 +1,4 @@
-package Unix::Dispatcher;
+package Unix::TaskManager;
 use strict;
 use warnings;
 

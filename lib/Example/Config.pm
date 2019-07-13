@@ -7,20 +7,20 @@ use Carp qw( confess );
 sub new {
     my ( $class, %args ) = @_;
 
-    my $dispatcher_timeout     = delete $args{dispatcher_timeout};
-    my $dispatcher_max_workers = delete $args{dispatcher_max_workers};
-    my $db_data_source         = delete $args{db_data_source};
-    my $db_username            = delete $args{db_username};
-    my $db_password            = delete $args{db_password};
+    my $tasks_timeout     = delete $args{tasks_timeout};
+    my $tasks_max_workers = delete $args{tasks_max_workers};
+    my $db_data_source    = delete $args{db_data_source};
+    my $db_username       = delete $args{db_username};
+    my $db_password       = delete $args{db_password};
     !%args or confess 'unexpected arguments';
 
     my $self = bless {}, $class;
 
-    $self->{dispatcher_timeout}     = $dispatcher_timeout;
-    $self->{dispatcher_max_workers} = $dispatcher_max_workers;
-    $self->{db_data_source}         = $db_data_source;
-    $self->{db_username}            = $db_username;
-    $self->{db_password}            = $db_password;
+    $self->{tasks_timeout}     = $tasks_timeout;
+    $self->{tasks_max_workers} = $tasks_max_workers;
+    $self->{db_data_source}    = $db_data_source;
+    $self->{db_username}       = $db_username;
+    $self->{db_password}       = $db_password;
 
     return $self;
 }
@@ -28,13 +28,13 @@ sub new {
 sub timeout {
     my $self = shift;
 
-    return $self->{dispatcher_timeout};
+    return $self->{tasks_timeout};
 }
 
 sub max_workers {
     my $self = shift;
 
-    return $self->{dispatcher_max_workers};
+    return $self->{tasks_max_workers};
 }
 
 sub db_data_source {
@@ -55,12 +55,12 @@ sub db_password {
     return $self->{db_password};
 }
 
-sub update_dispatcher {
-    my $self       = shift;
-    my $dispatcher = shift;
+sub update_task_manager {
+    my $self         = shift;
+    my $task_manager = shift;
 
-    $dispatcher->set_max_workers( $self->max_workers );
-    $dispatcher->set_timeout( $self->timeout );
+    $task_manager->set_max_workers( $self->max_workers );
+    $task_manager->set_timeout( $self->timeout );
 
     return;
 }

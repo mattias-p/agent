@@ -228,7 +228,7 @@ sub new {
     my ( $class, %args ) = @_;
     my $config_loader  = delete $args{config_loader};
     my $job_source     = delete $args{job_source};
-    my $dispatcher     = delete $args{dispatcher};
+    my $task_manager   = delete $args{task_manager};
     my $idler          = delete $args{idler};
     my $db_class       = delete $args{db_class};
     my $log_adapter    = delete $args{log_adapter};
@@ -246,7 +246,7 @@ sub new {
     $self->{daemonizer}     = $daemonizer;
     $self->{db_class}       = $db_class;
     $self->{deadlines}      = $deadlines;
-    $self->{dispatcher}     = $dispatcher;
+    $self->{task_manager}   = $task_manager;
     $self->{idler}          = $idler;
     $self->{job_source}     = $job_source;
     $self->{lifecycle}      = $lifecycle;
@@ -359,7 +359,7 @@ sub do_setup {
     $self->{config} = $self->{config_loader}->load()
       or croak "config loading failed";
 
-    $self->{config}->update_dispatcher( $self->{dispatcher} );
+    $self->{config}->update_task_manager( $self->{task_manager} );
 
     $log->info("testing database connection");
     {
@@ -421,7 +421,7 @@ sub do_load {
     $log->info("adopting new configuration file and database connection");
     $self->{config} = $config;
     $self->{job_source}->set_db($db);
-    $self->{config}->update_dispatcher( $self->{dispatcher} );
+    $self->{config}->update_task_manager( $self->{task_manager} );
 
     return $I_STEP;
 }
@@ -429,7 +429,7 @@ sub do_load {
 sub do_spawn {
     my $self = shift;
 
-    if ( !$self->{dispatcher}->has_available_worker ) {
+    if ( !$self->{task_manager}->has_available_worker ) {
         $log->warn("no worker");
         return $I_STEP;
     }
@@ -440,7 +440,7 @@ sub do_spawn {
         return $I_STEP;
     }
 
-    my $pid = $self->{dispatcher}->spawn(
+    my $pid = $self->{task_manager}->spawn(
         $job,
         sub {
             eval {
@@ -478,7 +478,7 @@ sub do_spawn {
 
     $log->infof( "job(%s:%s) claimed, worker(%s) spawned",
         $job->item_id, $job->job_id, $pid );
-    my $timeout = $self->{dispatcher}->get_timeout;
+    my $timeout = $self->{task_manager}->get_timeout;
     my $now = time();
     my $new_deadline = $now + $timeout;
     $log->debugf( "adding deadline(@%d) i.e. now+%ds", $new_deadline, $timeout );
@@ -491,7 +491,7 @@ sub do_spawn {
 sub do_reap {
     my $self = shift;
 
-    my %jobs = $self->{dispatcher}->reap();
+    my %jobs = $self->{task_manager}->reap();
     for my $pid ( keys %jobs ) {
         my ( $wait_status, $job ) = @{ $jobs{$pid} };
         my $severity =
@@ -521,7 +521,7 @@ sub do_idle {
 
 sub do_grace_idle {
     my $self = shift;
-    if ( $self->{dispatcher}->has_live_workers ) {
+    if ( $self->{task_manager}->has_live_workers ) {
         $self->do_idle;
         return $I_STEP;
     }
@@ -535,7 +535,7 @@ sub do_expire {
 
     $self->_update_alarm( time() );
 
-    my %jobs = $self->{dispatcher}->kill_workers( treshold => time() );
+    my %jobs = $self->{task_manager}->kill_workers( treshold => time() );
 
     for my $pid ( keys %jobs ) {
         my $job = $jobs{$pid};
@@ -550,7 +550,7 @@ sub do_expire {
 sub do_acquit {
     my $self = shift;
 
-    my %jobs = $self->{dispatcher}->kill_workers( treshold => undef );
+    my %jobs = $self->{task_manager}->kill_workers( treshold => undef );
 
     for my $pid ( keys %jobs ) {
         my $job = $jobs{$pid};

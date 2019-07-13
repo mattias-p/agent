@@ -11,7 +11,7 @@ use Example::JobSource;
 use File::Spec;
 use Readonly;
 use Unix::Daemonizer;
-use Unix::Dispatcher;
+use Unix::TaskManager;
 use Unix::Idler;
 use Unix::SignalHandler qw( $SIGNAL_HANDLER );
 
@@ -51,7 +51,7 @@ my $agent = do {
         out_file => $out_file,
     );
 
-    my $dispatcher = Unix::Dispatcher->new(
+    my $task_manager = Unix::TaskManager->new(
         p_fail => 0.0,
     );
 
@@ -67,7 +67,7 @@ my $agent = do {
         config_loader  => $config_loader,
         daemonizer     => $daemonizer,
         db_class       => $db_class,
-        dispatcher     => $dispatcher,
+        task_manager   => $task_manager,
         idler          => $idler,
         job_source     => $job_source,
         log_adapter    => $log_adapter,

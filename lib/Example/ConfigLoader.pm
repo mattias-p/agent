@@ -33,11 +33,11 @@ sub load {
     my $cfg = Config::IniFiles->new( -file => $self->{config_file} );
 
     return Example::Config->new(
-        dispatcher_timeout     => $cfg->val( 'dispatcher', 'timeout' ),
-        dispatcher_max_workers => $cfg->val( 'dispatcher', 'max_workers' ),
-        db_data_source         => $cfg->val( 'db',         'db_data_source' ),
-        db_username            => $cfg->val( 'db',         'db_username' ),
-        db_password            => $cfg->val( 'db',         'db_password' ),
+        tasks_timeout     => $cfg->val( 'tasks', 'timeout' ),
+        tasks_max_workers => $cfg->val( 'tasks', 'max_workers' ),
+        db_data_source    => $cfg->val( 'db',    'db_data_source' ),
+        db_username       => $cfg->val( 'db',    'db_username' ),
+        db_password       => $cfg->val( 'db',    'db_password' ),
     );
 }
 
