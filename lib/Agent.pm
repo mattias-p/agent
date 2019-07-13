@@ -9,7 +9,7 @@ use Log::Any qw( $log );
 use Log::Any::Adapter;
 use Readonly;
 use Set::Ordered::Array;
-use Set::Ordered::Integer;
+use Set::Ordered::BitVector;
 
 our @EXPORT_OK = qw(
   create_dfa
@@ -273,7 +273,7 @@ sub run {
     $log->warnf( "*" x 78, $$ );
     $log->infof( "State(%s)", $self->state );
 
-    my $input_flags = Set::Ordered::Integer->new();
+    my $input_flags = Set::Ordered::BitVector->new();
 
     eval {
         while ( !$self->is_final ) {
