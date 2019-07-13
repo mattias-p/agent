@@ -569,17 +569,16 @@ sub do_noop {
 }
 
 sub _update_alarm {
-    my $self=  shift;
-    my $now = shift;
+    my $self = shift;
+    my $now  = shift;
 
     $self->{deadlines}->remove_le($now);
     my $deadline = $self->{deadlines}->peek_min();
     if ( $deadline ) {
         my $timeout = $deadline - $now;
-        alarm($timeout);
-
-        $log->debugf( "alarm(now+%ds) set for deadline(@%d)",
+        $log->debugf( "setting alarm(now+%ds) for deadline(@%d)",
             $timeout, $deadline );
+        alarm($timeout);
     }
 
     return;

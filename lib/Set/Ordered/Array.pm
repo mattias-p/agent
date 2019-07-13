@@ -58,12 +58,13 @@ sub new {
     my ( $class, %args ) = @_;
     my $cmp      = delete $args{cmp};
     my $elements = delete $args{elements};
-    !%args or confess 'unrecognized arguments';
+    !%args
+      or confess 'unrecognized arguments';
 
     $cmp //= sub { $_[0] <=> $_[1] };
     $elements //= [];
 
-    $elements = [ sort( $cmp, @{ $elements }) ];
+    $elements = [ sort { $cmp->( $a, $b ) } @{$elements} ];
 
     my $self = bless {}, $class;
 
