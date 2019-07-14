@@ -81,6 +81,8 @@ TBD
 
 ## Known problems
 
+* Come up with a good design for where/how to initialize signal handlers.
+
 * Consider integrating Idler into SignalHandler?
 
 * Agent should not decide the exit status for the script.

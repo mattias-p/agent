@@ -233,6 +233,7 @@ sub new {
     my $log_adapter   = delete $args{log_adapter};
     my $daemonizer    = delete $args{daemonizer};
     my $signals       = delete $args{signals};
+    my $init_daemon   = delete $args{init_daemon};
     !%args
       or confess 'unrecognized arguments';
 
@@ -249,6 +250,7 @@ sub new {
     $self->{lifecycle}     = $lifecycle;
     $self->{log_adapter}   = $log_adapter;
     $self->{signals}       = $signals;
+    $self->{init_daemon}   = $init_daemon;
 
     return $self;
 }
@@ -376,13 +378,8 @@ sub do_setup {
       or croak "database reconnection failed";
     $self->{job_source}->set_db($db);
 
-    $log->info("installing signal handlers");
-    $self->{signals}->set_handler( 'ALRM', 'TRACK' );
-    $self->{signals}->set_handler( 'CHLD', 'TRACK' );
-    $self->{signals}->set_handler( 'HUP', 'TRACK' );
-    $self->{signals}->set_handler( 'QUIT', 'TRACK' );
-    $self->{signals}->set_handler( 'TERM', 'TRACK' );
-    $self->{signals}->set_handler( 'USR2', 'TRACK' );
+    $log->info("initializing daemon");
+    $self->{init_daemon}();
 
     return $I_STEP;
 }

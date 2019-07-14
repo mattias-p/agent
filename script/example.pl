@@ -67,6 +67,15 @@ my $agent = do {
         p_fail => 0.0,
     );
 
+    my $init_daemon = sub {
+        $signals->set_handler( 'ALRM', 'TRACK' );    # Used by TaskManager
+        $signals->set_handler( 'CHLD', 'TRACK' );    # Used by TaskManager
+        $signals->set_handler( 'HUP',  'TRACK' );    # Used by Agent
+        $signals->set_handler( 'QUIT', 'TRACK' );    # Used by Agent
+        $signals->set_handler( 'TERM', 'TRACK' );    # Used by Agent
+        $signals->set_handler( 'USR2', 'TRACK' );    # Used by Agent
+    };
+
     Agent->new(
         config_loader => $config_loader,
         daemonizer    => $daemonizer,
@@ -76,6 +85,7 @@ my $agent = do {
         job_source    => $job_source,
         log_adapter   => $log_adapter,
         signals       => $signals,
+        init_daemon   => $init_daemon,
     );
 };
 
