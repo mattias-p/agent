@@ -55,13 +55,4 @@ sub db_password {
     return $self->{db_password};
 }
 
-sub update_task_manager {
-    my $self         = shift;
-    my $task_manager = shift;
-
-    $task_manager->set_max_workers( $self->max_workers );
-
-    return;
-}
-
 1;

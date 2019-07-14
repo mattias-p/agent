@@ -360,8 +360,6 @@ sub do_setup {
     $self->{config} = $self->{config_loader}->load()
       or croak "config loading failed";
 
-    $self->{config}->update_task_manager( $self->{task_manager} );
-
     $log->info("testing database connection");
     {
         my $db = $self->{db_class}->connect( config => $self->{config} )
@@ -430,7 +428,7 @@ sub do_load {
 sub do_spawn {
     my $self = shift;
 
-    if ( !$self->{task_manager}->has_available_worker ) {
+    if ( $self->{task_manager}->active_task_count >= $self->{config}->max_workers ) {
         $log->warn("no worker");
         return $I_STEP;
     }
@@ -441,7 +439,7 @@ sub do_spawn {
         return $I_STEP;
     }
 
-    my $pid = $self->{task_manager}->spawn(
+    my $pid = $self->{task_manager}->add_task(
         $self->{config}->timeout(),
         $job,
         sub {
@@ -495,7 +493,7 @@ sub do_spawn {
 sub do_reap {
     my $self = shift;
 
-    my %jobs = $self->{task_manager}->reap();
+    my %jobs = $self->{task_manager}->reap_terminated_tasks();
     for my $pid ( keys %jobs ) {
         my ( $wait_status, $job ) = @{ $jobs{$pid} };
         my $severity =
@@ -539,7 +537,7 @@ sub do_expire {
 
     $self->_update_alarm( time() );
 
-    my %jobs = $self->{task_manager}->kill_workers( treshold => time() );
+    my %jobs = $self->{task_manager}->terminate_tasks( treshold => time() );
 
     for my $pid ( keys %jobs ) {
         my $job = $jobs{$pid};
@@ -554,7 +552,7 @@ sub do_expire {
 sub do_acquit {
     my $self = shift;
 
-    my %jobs = $self->{task_manager}->kill_workers( treshold => undef );
+    my %jobs = $self->{task_manager}->terminate_tasks( treshold => undef );
 
     for my $pid ( keys %jobs ) {
         my $job = $jobs{$pid};

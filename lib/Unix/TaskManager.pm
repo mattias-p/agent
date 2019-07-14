@@ -10,7 +10,6 @@ use Unix::WaitStatus;
 sub new {
     my ( $class, %args ) = @_;
 
-    my $max_workers = delete $args{max_workers};
     my $p_fail      = delete $args{p_fail};
 
     !%args or confess 'unexpected arguments';
@@ -21,34 +20,18 @@ sub new {
     my $self = bless {}, $class;
 
     $self->{jobs}        = $jobs;
-    $self->{max_workers} = $max_workers;
     $self->{p_fail}      = $p_fail;
 
     return $self;
 }
 
-sub set_max_workers {
-    my $self  = shift;
-    my $value = shift;
-
-    $self->{max_workers} = $value;
-
-    return;
-}
-
-sub has_live_workers {
+sub active_task_count {
     my $self = shift;
 
-    return !!%{ $self->{jobs} };
+    return scalar keys %{ $self->{jobs} };
 }
 
-sub has_available_worker {
-    my $self = shift;
-
-    return scalar keys %{ $self->{jobs} } < $self->{max_workers};
-}
-
-sub spawn {
+sub add_task {
     my $self    = shift;
     my $timeout = shift;
     my $data    = shift;
@@ -74,7 +57,7 @@ sub spawn {
     return $pid;
 }
 
-sub reap {
+sub reap_terminated_tasks {
     my $self  = shift;
 
     my %reaped;
@@ -90,7 +73,7 @@ sub reap {
     return %reaped;
 }
 
-sub kill_workers {
+sub terminate_tasks {
     my ( $self, %args ) = @_;
     my $treshold = delete $args{treshold};
     !%args
