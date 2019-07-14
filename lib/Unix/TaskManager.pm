@@ -5,24 +5,23 @@ use warnings;
 use Carp qw( confess );
 use Log::Any qw( $log );
 use POSIX ":sys_wait_h";
-use Set::Ordered::Array;
 use Unix::WaitStatus;
 
 sub new {
     my ( $class, %args ) = @_;
+    my $alarms  = delete $args{alarms};
     my $signals = delete $args{signals};
     my $p_fail  = delete $args{p_fail};
     !%args or confess 'unexpected arguments';
 
     $p_fail //= 0.0;
-    my $deadlines      = Set::Ordered::Array->new();
     my $has_overdue    = 0;
     my $has_terminated = 0;
     my $jobs           = {};
 
     my $self = bless {}, $class;
 
-    $self->{deadlines}      = $deadlines;
+    $self->{alarms}         = $alarms;
     $self->{has_overdue}    = $has_overdue;
     $self->{has_terminated} = $has_terminated;
     $self->{jobs}           = $jobs;
@@ -79,11 +78,10 @@ sub add_task {
         my $exitstatus = $action->();
         exit( $exitstatus // 2 );
     }
+
     my $deadline = $now + $timeout;
     $self->{jobs}{$pid} = [ $deadline, $data ];
-    $log->debugf( "adding deadline(@%d) i.e. now+%ds", $deadline, $timeout );
-    $self->{deadlines}->insert($deadline);
-    $self->_update_alarm( $now );
+    $self->{alarms}->add_alarm( $deadline, $now );
 
     return $pid;
 }
@@ -113,7 +111,7 @@ sub terminate_tasks {
       or confess 'unrecognized arguments';
 
     if ( defined $treshold ) {
-        $self->_update_alarm($treshold);
+        $self->{alarms}->refresh_alarm($treshold);
     }
 
     my %jobs;
@@ -129,22 +127,6 @@ sub terminate_tasks {
     $self->{has_overdue} = 0;
 
     return %jobs;
-}
-
-sub _update_alarm {
-    my $self = shift;
-    my $now  = shift;
-
-    $self->{deadlines}->remove_le($now);
-    my $deadline = $self->{deadlines}->peek_min();
-    if ( $deadline ) {
-        my $timeout = $deadline - $now;
-        $log->debugf( "setting alarm(now+%ds) for deadline(@%d)",
-            $timeout, $deadline );
-        alarm($timeout);
-    }
-
-    return;
 }
 
 1;

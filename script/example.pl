@@ -13,6 +13,7 @@ use Readonly;
 use Unix::Daemonizer;
 use Unix::TaskManager;
 use Unix::Idler;
+use Unix::Alarms qw( $ALARMS );
 use Unix::Signals qw( $SIGNALS );
 
 my $agent = do {
@@ -51,9 +52,11 @@ my $agent = do {
         out_file => $out_file,
     );
 
+    my $alarms  = $ALARMS;
     my $signals = $SIGNALS;
 
     my $task_manager = Unix::TaskManager->new(
+        alarms  => $alarms,
         signals => $signals,
         p_fail  => 0.0,
     );
