@@ -4,6 +4,7 @@ use warnings;
 
 use Carp qw( confess );
 use Exporter 'import';
+use Log::Any qw( $log );
 use Readonly;
 use Scalar::Util qw(looks_like_number);
 
@@ -67,7 +68,7 @@ sub set_handler {
     my $type    = shift;
 
     if ( $type eq 'TRACK' ) {
-        $SIG{$signame} = \&_store;
+        $SIG{$signame} = \&_handle_signal;
     }
     elsif ( $type eq 'DEFAULT' ) {
         $SIG{$signame} = 'DEFAULT'
@@ -131,8 +132,10 @@ sub all_signals {
     return keys %SIG;
 }
 
-sub _store {
+sub _handle_signal {
     my $signame = shift;
+
+    $log->debugf( "caught %s", $signame );
 
     $SIGNALS->{transient}{$signame} = 1;
 

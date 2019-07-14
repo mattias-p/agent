@@ -5,22 +5,29 @@ use warnings;
 use Carp qw( confess );
 use Log::Any qw( $log );
 use POSIX ":sys_wait_h";
+use Set::Ordered::Array;
 use Unix::WaitStatus;
 
 sub new {
     my ( $class, %args ) = @_;
-
-    my $p_fail      = delete $args{p_fail};
-
+    my $signals = delete $args{signals};
+    my $p_fail  = delete $args{p_fail};
     !%args or confess 'unexpected arguments';
 
     $p_fail //= 0.0;
-    my $jobs = {};
+    my $deadlines      = Set::Ordered::Array->new();
+    my $has_overdue    = 0;
+    my $has_terminated = 0;
+    my $jobs           = {};
 
     my $self = bless {}, $class;
 
-    $self->{jobs}        = $jobs;
-    $self->{p_fail}      = $p_fail;
+    $self->{deadlines}      = $deadlines;
+    $self->{has_overdue}    = $has_overdue;
+    $self->{has_terminated} = $has_terminated;
+    $self->{jobs}           = $jobs;
+    $self->{p_fail}         = $p_fail;
+    $self->{signals}        = $signals;
 
     return $self;
 }
@@ -29,6 +36,27 @@ sub active_task_count {
     my $self = shift;
 
     return scalar keys %{ $self->{jobs} };
+}
+
+sub poll {
+    my $self = shift;
+
+    $self->{has_terminated} ||= $self->{signals}->was_caught('CHLD');
+    $self->{has_overdue}    ||= $self->{signals}->was_caught('ALRM');
+
+    return;
+}
+
+sub has_terminated_tasks {
+    my $self = shift;
+
+    return $self->{has_terminated};
+}
+
+sub has_overdue_tasks {
+    my $self = shift;
+
+    return $self->{has_overdue};
 }
 
 sub add_task {
@@ -53,6 +81,9 @@ sub add_task {
     }
     my $deadline = $now + $timeout;
     $self->{jobs}{$pid} = [ $deadline, $data ];
+    $log->debugf( "adding deadline(@%d) i.e. now+%ds", $deadline, $timeout );
+    $self->{deadlines}->insert($deadline);
+    $self->_update_alarm( $now );
 
     return $pid;
 }
@@ -70,6 +101,8 @@ sub reap_terminated_tasks {
         }
     }
 
+    $self->{has_terminated} = 0;
+
     return %reaped;
 }
 
@@ -78,6 +111,10 @@ sub terminate_tasks {
     my $treshold = delete $args{treshold};
     !%args
       or confess 'unrecognized arguments';
+
+    if ( defined $treshold ) {
+        $self->_update_alarm($treshold);
+    }
 
     my %jobs;
     for my $pid ( keys %{ $self->{jobs} } ) {
@@ -89,7 +126,25 @@ sub terminate_tasks {
         }
     }
 
+    $self->{has_overdue} = 0;
+
     return %jobs;
+}
+
+sub _update_alarm {
+    my $self = shift;
+    my $now  = shift;
+
+    $self->{deadlines}->remove_le($now);
+    my $deadline = $self->{deadlines}->peek_min();
+    if ( $deadline ) {
+        my $timeout = $deadline - $now;
+        $log->debugf( "setting alarm(now+%ds) for deadline(@%d)",
+            $timeout, $deadline );
+        alarm($timeout);
+    }
+
+    return;
 }
 
 1;

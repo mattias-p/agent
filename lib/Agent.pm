@@ -8,7 +8,6 @@ use Exporter qw( import );
 use Log::Any qw( $log );
 use Log::Any::Adapter;
 use Readonly;
-use Set::Ordered::Array;
 use Set::Ordered::BitVector;
 
 our @EXPORT_OK = qw(
@@ -238,14 +237,12 @@ sub new {
       or confess 'unrecognized arguments';
 
     my $lifecycle = create_dfa();
-    my $deadlines = Set::Ordered::Array->new();
 
     my $self = bless {}, $class;
 
     $self->{config_loader} = $config_loader;
     $self->{daemonizer}    = $daemonizer;
     $self->{db_class}      = $db_class;
-    $self->{deadlines}     = $deadlines;
     $self->{task_manager}  = $task_manager;
     $self->{idler}         = $idler;
     $self->{job_source}    = $job_source;
@@ -279,35 +276,29 @@ sub run {
     eval {
         while ( !$self->is_final ) {
             my $input = $input_flags->pop_min // $I_STEP;
-
             my $new_input = $self->process($input);
-
             $input_flags->insert($new_input);
 
             $self->{signals}->update();
-            if ( $self->{signals}->was_caught('ALRM') ) {
-                $log->debug("caught SIGALRM");
-                $input_flags->insert($I_EXPIRE);
-            }
-            if ( $self->{signals}->was_caught('CHLD') ) {
-                $log->debug("caught SIGCHLD");
-                $input_flags->insert($I_REAP);
-            }
+            $self->{task_manager}->poll();
+
             if ( $self->{signals}->was_caught('HUP') ) {
-                $log->debug("caught SIGHUP");
                 $input_flags->insert($I_LOAD);
             }
             if ( $self->{signals}->was_caught('QUIT') ) {
-                $log->debug("caught SIGQUIT");
                 $input_flags->insert($I_ACQUIT);
             }
             if ( $self->{signals}->was_caught('TERM') ) {
-                $log->debug("caught SIGTERM");
                 $input_flags->insert($I_CLOSE);
             }
             if ( $self->{signals}->was_caught('USR2') ) {
-                $log->debug("caught SIGUSR2");
                 $input_flags->insert($I_SPAWN);
+            }
+            if ( $self->{task_manager}->has_overdue_tasks() ) {
+                $input_flags->insert($I_EXPIRE);
+            }
+            if ( $self->{task_manager}->has_terminated_tasks() ) {
+                $input_flags->insert($I_REAP);
             }
         }
     };
@@ -480,12 +471,6 @@ sub do_spawn {
 
     $log->infof( "job(%s:%s) claimed, worker(%s) spawned",
         $job->item_id, $job->job_id, $pid );
-    my $timeout = $self->{config}->timeout;
-    my $now = time();
-    my $new_deadline = $now + $timeout;
-    $log->debugf( "adding deadline(@%d) i.e. now+%ds", $new_deadline, $timeout );
-    $self->{deadlines}->insert($new_deadline);
-    $self->_update_alarm( $now );
 
     return $I_SPAWN;
 }
@@ -535,8 +520,6 @@ sub do_grace_idle {
 sub do_expire {
     my $self = shift;
 
-    $self->_update_alarm( time() );
-
     my %jobs = $self->{task_manager}->terminate_tasks( treshold => time() );
 
     for my $pid ( keys %jobs ) {
@@ -568,22 +551,6 @@ sub do_noop {
     my $self = shift;
 
     return $I_STEP;
-}
-
-sub _update_alarm {
-    my $self = shift;
-    my $now  = shift;
-
-    $self->{deadlines}->remove_le($now);
-    my $deadline = $self->{deadlines}->peek_min();
-    if ( $deadline ) {
-        my $timeout = $deadline - $now;
-        $log->debugf( "setting alarm(now+%ds) for deadline(@%d)",
-            $timeout, $deadline );
-        alarm($timeout);
-    }
-
-    return;
 }
 
 1;

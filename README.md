@@ -81,6 +81,8 @@ TBD
 
 ## Known problems
 
+* TaskManager should not monopolize on alarm().
+
 * Consider integrating Idler into SignalHandler?
 
 * Agent should not decide the exit status for the script.

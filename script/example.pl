@@ -51,8 +51,11 @@ my $agent = do {
         out_file => $out_file,
     );
 
+    my $signals = $SIGNALS;
+
     my $task_manager = Unix::TaskManager->new(
-        p_fail => 0.0,
+        signals => $signals,
+        p_fail  => 0.0,
     );
 
     my $idler = Unix::Idler->new();
@@ -60,8 +63,6 @@ my $agent = do {
     my $job_source = Example::JobSource->new(
         p_fail => 0.0,
     );
-
-    my $signals = $SIGNALS;
 
     Agent->new(
         config_loader => $config_loader,
