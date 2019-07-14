@@ -442,6 +442,7 @@ sub do_spawn {
     }
 
     my $pid = $self->{task_manager}->spawn(
+        $self->{config}->timeout(),
         $job,
         sub {
             eval {
@@ -481,7 +482,7 @@ sub do_spawn {
 
     $log->infof( "job(%s:%s) claimed, worker(%s) spawned",
         $job->item_id, $job->job_id, $pid );
-    my $timeout = $self->{task_manager}->get_timeout;
+    my $timeout = $self->{config}->timeout;
     my $now = time();
     my $new_deadline = $now + $timeout;
     $log->debugf( "adding deadline(@%d) i.e. now+%ds", $new_deadline, $timeout );

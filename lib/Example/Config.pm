@@ -60,7 +60,6 @@ sub update_task_manager {
     my $task_manager = shift;
 
     $task_manager->set_max_workers( $self->max_workers );
-    $task_manager->set_timeout( $self->timeout );
 
     return;
 }

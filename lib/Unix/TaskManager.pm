@@ -12,7 +12,6 @@ sub new {
 
     my $max_workers = delete $args{max_workers};
     my $p_fail      = delete $args{p_fail};
-    my $timeout     = delete $args{timeout};
 
     !%args or confess 'unexpected arguments';
 
@@ -24,7 +23,6 @@ sub new {
     $self->{jobs}        = $jobs;
     $self->{max_workers} = $max_workers;
     $self->{p_fail}      = $p_fail;
-    $self->{timeout}     = $timeout;
 
     return $self;
 }
@@ -36,21 +34,6 @@ sub set_max_workers {
     $self->{max_workers} = $value;
 
     return;
-}
-
-sub set_timeout {
-    my $self  = shift;
-    my $value = shift;
-
-    $self->{timeout} = $value;
-
-    return;
-}
-
-sub get_timeout {
-    my $self = shift;
-
-    return $self->{timeout};
 }
 
 sub has_live_workers {
@@ -66,9 +49,10 @@ sub has_available_worker {
 }
 
 sub spawn {
-    my $self   = shift;
-    my $data   = shift;
-    my $action = shift;
+    my $self    = shift;
+    my $timeout = shift;
+    my $data    = shift;
+    my $action  = shift;
 
     if ($self->{p_fail} > 0 && rand() < $self->{p_fail} ) {
         $log->warn("injected failure (dispatcher)");
@@ -84,7 +68,7 @@ sub spawn {
         my $exitstatus = $action->();
         exit( $exitstatus // 2 );
     }
-    my $deadline = $now + $self->{timeout};
+    my $deadline = $now + $timeout;
     $self->{jobs}{$pid} = [ $deadline, $data ];
 
     return $pid;
