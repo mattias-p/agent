@@ -226,14 +226,14 @@ sub create_dfa {
 
 sub new {
     my ( $class, %args ) = @_;
-    my $config_loader  = delete $args{config_loader};
-    my $job_source     = delete $args{job_source};
-    my $task_manager   = delete $args{task_manager};
-    my $idler          = delete $args{idler};
-    my $db_class       = delete $args{db_class};
-    my $log_adapter    = delete $args{log_adapter};
-    my $daemonizer     = delete $args{daemonizer};
-    my $signal_handler = delete $args{signal_handler};
+    my $config_loader = delete $args{config_loader};
+    my $job_source    = delete $args{job_source};
+    my $task_manager  = delete $args{task_manager};
+    my $idler         = delete $args{idler};
+    my $db_class      = delete $args{db_class};
+    my $log_adapter   = delete $args{log_adapter};
+    my $daemonizer    = delete $args{daemonizer};
+    my $signals       = delete $args{signals};
     !%args
       or confess 'unrecognized arguments';
 
@@ -242,16 +242,16 @@ sub new {
 
     my $self = bless {}, $class;
 
-    $self->{config_loader}  = $config_loader;
-    $self->{daemonizer}     = $daemonizer;
-    $self->{db_class}       = $db_class;
-    $self->{deadlines}      = $deadlines;
-    $self->{task_manager}   = $task_manager;
-    $self->{idler}          = $idler;
-    $self->{job_source}     = $job_source;
-    $self->{lifecycle}      = $lifecycle;
-    $self->{log_adapter}    = $log_adapter;
-    $self->{signal_handler} = $signal_handler;
+    $self->{config_loader} = $config_loader;
+    $self->{daemonizer}    = $daemonizer;
+    $self->{db_class}      = $db_class;
+    $self->{deadlines}     = $deadlines;
+    $self->{task_manager}  = $task_manager;
+    $self->{idler}         = $idler;
+    $self->{job_source}    = $job_source;
+    $self->{lifecycle}     = $lifecycle;
+    $self->{log_adapter}   = $log_adapter;
+    $self->{signals}       = $signals;
 
     return $self;
 }
@@ -284,27 +284,28 @@ sub run {
 
             $input_flags->insert($new_input);
 
-            if ( $self->{signal_handler}->retrieve_caught('ALRM') ) {
+            $self->{signals}->update();
+            if ( $self->{signals}->was_caught('ALRM') ) {
                 $log->debug("caught SIGALRM");
                 $input_flags->insert($I_EXPIRE);
             }
-            if ( $self->{signal_handler}->retrieve_caught('CHLD') ) {
+            if ( $self->{signals}->was_caught('CHLD') ) {
                 $log->debug("caught SIGCHLD");
                 $input_flags->insert($I_REAP);
             }
-            if ( $self->{signal_handler}->retrieve_caught('HUP') ) {
+            if ( $self->{signals}->was_caught('HUP') ) {
                 $log->debug("caught SIGHUP");
                 $input_flags->insert($I_LOAD);
             }
-            if ( $self->{signal_handler}->retrieve_caught('QUIT') ) {
+            if ( $self->{signals}->was_caught('QUIT') ) {
                 $log->debug("caught SIGQUIT");
                 $input_flags->insert($I_ACQUIT);
             }
-            if ( $self->{signal_handler}->retrieve_caught('TERM') ) {
+            if ( $self->{signals}->was_caught('TERM') ) {
                 $log->debug("caught SIGTERM");
                 $input_flags->insert($I_CLOSE);
             }
-            if ( $self->{signal_handler}->retrieve_caught('USR2') ) {
+            if ( $self->{signals}->was_caught('USR2') ) {
                 $log->debug("caught SIGUSR2");
                 $input_flags->insert($I_SPAWN);
             }
@@ -387,12 +388,12 @@ sub do_setup {
     $self->{job_source}->set_db($db);
 
     $log->info("installing signal handlers");
-    $self->{signal_handler}->install_handler( 'ALRM' );
-    $self->{signal_handler}->install_handler( 'CHLD' );
-    $self->{signal_handler}->install_handler( 'HUP' );
-    $self->{signal_handler}->install_handler( 'QUIT' );
-    $self->{signal_handler}->install_handler( 'TERM' );
-    $self->{signal_handler}->install_handler( 'USR2' );
+    $self->{signals}->set_handler( 'ALRM', 'TRACK' );
+    $self->{signals}->set_handler( 'CHLD', 'TRACK' );
+    $self->{signals}->set_handler( 'HUP', 'TRACK' );
+    $self->{signals}->set_handler( 'QUIT', 'TRACK' );
+    $self->{signals}->set_handler( 'TERM', 'TRACK' );
+    $self->{signals}->set_handler( 'USR2', 'TRACK' );
 
     return $I_STEP;
 }
@@ -444,7 +445,9 @@ sub do_spawn {
         $job,
         sub {
             eval {
-                $self->{signal_handler}->ignore_all_signals();
+                for my $signame ( $self->{signals}->all_signals() ) {
+                    $self->{signals}->set_handler( $signame, 'IGNORE' );
+                }
                 my $config   = $self->{config};
                 my $db_class = $self->{db_class};
                 $self->forget_everyting();

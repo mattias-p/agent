@@ -13,7 +13,7 @@ use Readonly;
 use Unix::Daemonizer;
 use Unix::TaskManager;
 use Unix::Idler;
-use Unix::SignalHandler qw( $SIGNAL_HANDLER );
+use Unix::Signals qw( $SIGNALS );
 
 my $agent = do {
     Readonly my $pid_file    => File::Spec->catfile( getcwd, 'example.pid' );
@@ -61,17 +61,17 @@ my $agent = do {
         p_fail => 0.0,
     );
 
-    my $signal_handler = $SIGNAL_HANDLER;
+    my $signals = $SIGNALS;
 
     Agent->new(
-        config_loader  => $config_loader,
-        daemonizer     => $daemonizer,
-        db_class       => $db_class,
-        task_manager   => $task_manager,
-        idler          => $idler,
-        job_source     => $job_source,
-        log_adapter    => $log_adapter,
-        signal_handler => $signal_handler,
+        config_loader => $config_loader,
+        daemonizer    => $daemonizer,
+        db_class      => $db_class,
+        task_manager  => $task_manager,
+        idler         => $idler,
+        job_source    => $job_source,
+        log_adapter   => $log_adapter,
+        signals       => $signals,
     );
 };
 
